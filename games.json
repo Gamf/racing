@@ -3,10 +3,22 @@
   "title": "Racing",
   "games": [
     {
+      "slug": "time-trial",
+      "title": "Time Trial",
+      "path": "games/time-trial/",
+      "icon": "🏁",
+      "color": "#f2c14e",
+      "dims": "3D",
+      "tags": ["circuit", "checkpoints", "time-trial", "three.js"],
+      "license": "MIT",
+      "credit": "Gamf original"
+    },
+    {
       "slug": "drift-circuit",
       "title": "Drift Circuit",
       "path": "games/drift-circuit/",
       "icon": "🏁",
+      "color": "#f2c14e",
       "dims": "2D",
       "tags": ["drift", "time-trial", "coins"],
       "license": "MIT",
@@ -17,18 +29,9 @@
       "title": "Highway",
       "path": "games/highway/",
       "icon": "🏎️",
+      "color": "#f2c14e",
       "dims": "3D",
       "tags": ["steer", "dodge", "endless"],
-      "license": "MIT",
-      "credit": "Gamf sample"
-    },
-    {
-      "slug": "sample-racer",
-      "title": "Lane Dash",
-      "path": "games/sample-racer/",
-      "icon": "🏎️",
-      "dims": "3D",
-      "tags": ["steer", "dodge", "three.js"],
       "license": "MIT",
       "credit": "Gamf sample"
     }

@@ -3,43 +3,116 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#0e0f13">
+  <meta name="theme-color" content="#07080c">
   <title>Racing — Gamf</title>
+  <meta name="description" content="Racing games on Gamf — touch-first, open-source browser games.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="gamf.css">
   <style>
-    *{box-sizing:border-box} html,body{margin:0;min-height:100%;background:#0e0f13;color:#f2f3f5;
-      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
-    header{padding:24px 16px 8px;text-align:center} h1{margin:0;font-size:2rem}
-    a.back{display:inline-block;margin:10px 0;color:#6c8cff;text-decoration:none;font-size:.9rem}
-    main{max-width:880px;margin:0 auto;padding:8px 16px 40px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
-    .card{display:block;text-decoration:none;color:inherit;background:#181b24;border:1px solid #242838;
-      border-radius:16px;overflow:hidden;transition:transform .08s} .card:active{transform:scale(.97)}
-    .thumb{aspect-ratio:16/10;display:grid;place-items:center;font-size:2.4rem;
-      background:linear-gradient(135deg,#f2c14e,#11131b)}
-    .body{padding:10px 12px 14px} .title{font-weight:600} .tags{margin-top:4px;color:#7d8493;font-size:.78rem}
+    /* compact genre hero band — uses the shared accent */
+    .gx-genre-hero { display: flex; align-items: center; gap: var(--sp-4); margin: var(--sp-4) 0 var(--sp-6);
+      padding: clamp(18px, 5vw, 32px); border-radius: var(--r-xl); border: 1px solid var(--gx-line);
+      background: linear-gradient(120deg, color-mix(in srgb, var(--gx-accent) 28%, var(--gx-bg-2)) 0%, var(--gx-bg-2) 60%);
+      box-shadow: var(--sh-2); }
+    .gx-genre-hero__icon { flex: none; width: clamp(56px, 14vw, 76px); height: clamp(56px, 14vw, 76px);
+      border-radius: var(--r-lg); display: grid; place-items: center; color: #fff;
+      background: linear-gradient(135deg, var(--gx-accent), color-mix(in srgb, var(--gx-accent) 30%, #000));
+      box-shadow: 0 0 24px color-mix(in srgb, var(--gx-accent) 50%, transparent); }
+    .gx-genre-hero__icon svg { width: 52%; height: 52%; }
+    .gx-genre-hero__title { font-size: var(--fs-2xl); line-height: 1.02; }
+    .gx-genre-hero__count { color: var(--gx-text-2); font-size: var(--fs-md); margin-top: 4px; font-family: var(--gx-font-display); }
   </style>
 </head>
-<body>
-  <header>
-    <h1>🏎️ Racing</h1>
-    <a class="back" href="../">← All games</a>
-  </header>
-  <main><div class="grid" id="grid">Loading…</div></main>
+<body class="gx" style="--gx-accent:#f2c14e">
+  <script src="gamf-icons.js"></script>
+  <script src="gamf-stats.js"></script>
+
+  <nav class="gx-nav">
+    <div class="gx-nav__inner">
+      <a class="gx-logo" href="../">
+        <span class="gx-logo__mark"><svg class="gx-ico"><use href="#i-logo"/></svg></span>
+        Gamf
+      </a>
+      <span class="gx-nav__spacer"></span>
+      <div class="gx-nav__links">
+        <a class="gx-btn gx-btn--ghost gx-btn--sm" href="../"><svg class="gx-ico"><use href="#i-back"/></svg> All games</a>
+        <a class="gx-btn gx-btn--ghost gx-btn--sm" href="../stats.html"><svg class="gx-ico"><use href="#i-stats"/></svg> Stats</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="gx-wrap">
+    <header class="gx-genre-hero">
+      <span class="gx-genre-hero__icon"><svg class="gx-ico"><use href="#i-car"/></svg></span>
+      <div>
+        <h1 class="gx-genre-hero__title">Racing</h1>
+        <p class="gx-genre-hero__count" id="count">Loading…</p>
+      </div>
+    </header>
+
+    <main class="gx-wrap" style="padding:0">
+      <div class="gx-grid" id="grid">
+        <div class="gx-skel"></div><div class="gx-skel"></div><div class="gx-skel"></div><div class="gx-skel"></div>
+      </div>
+    </main>
+  </div>
+
+  <footer class="gx-foot gx-wrap">Open-source · touch-first · hosted on GitHub Pages</footer>
+
   <script type="module">
+    const ACCENT = '#f2c14e';
     const grid = document.getElementById('grid');
-    try {
-      const res = await fetch('games.json', { cache: 'no-cache' });
-      const { games = [] } = await res.json();
-      grid.innerHTML = games.length ? '' : 'No games yet.';
-      for (const g of games) {
-        const a = document.createElement('a');
-        a.className = 'card'; a.href = g.path;
-        a.innerHTML = `<div class="thumb">${g.icon || '🎮'}</div>
-          <div class="body"><div class="title">${g.title}</div>
-          <div class="tags">${(g.tags || []).join(' · ')}</div></div>`;
-        grid.appendChild(a);
+    const countEl = document.getElementById('count');
+
+    if (window.gamfVisit) window.gamfVisit();
+    init();
+
+    async function init() {
+      let data;
+      try {
+        const res = await fetch('games.json', { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json();
+      } catch (err) {
+        grid.innerHTML = `<p class="gx-error">Couldn't load games.json — ${esc(err.message)}</p>`;
+        countEl.textContent = 'Unavailable';
+        return;
       }
-    } catch (e) { grid.textContent = 'Could not load games.json'; }
+
+      const games = data.games || [];
+      countEl.textContent = `${games.length} game${games.length === 1 ? '' : 's'}`;
+      grid.innerHTML = '';
+      if (!games.length) {
+        grid.innerHTML = `<p class="gx-empty">Nothing here yet — check back soon.</p>`;
+        return;
+      }
+      for (const game of games) grid.appendChild(card(game));
+    }
+
+    function card(game) {
+      const a = document.createElement('a');
+      a.className = 'gx-card';
+      a.href = new URL(game.path, document.baseURI).href;
+      const cover = safeColor(game.color || ACCENT);
+      a.innerHTML = `
+        <div class="gx-cover" style="--cover:${cover}">
+          ${game.dims ? `<span class="gx-cover__dims">${esc(game.dims)}</span>` : ''}
+          <span class="gx-cover__glyph">${esc(game.icon || '🎮')}</span>
+          <span class="gx-cover__play"><svg class="gx-ico"><use href="#i-play"/></svg></span>
+        </div>
+        <div class="gx-card__body">
+          <span class="gx-card__title">${esc(game.title)}</span>
+          <span class="gx-card__meta">${(game.tags || []).slice(0, 3).map(esc).join(' · ')}</span>
+          ${game.author ? `<span class="gx-card__by">by ${esc(game.author)}</span>` : ''}
+        </div>`;
+      a.addEventListener('click', () => { if (window.gamfPlay) window.gamfPlay(game.slug); });
+      return a;
+    }
+
+    function esc(s = '') { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    function safeColor(c) { return /^#[0-9a-fA-F]{3,8}$/.test(c) ? c : ACCENT; }
   </script>
 </body>
 </html>
