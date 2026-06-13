@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0e0f13">
+  <title>Drift Circuit — Gamf</title>
+  <style>
+    *{box-sizing:border-box} html,body{margin:0;height:100%;overflow:hidden;background:#0e0f13;color:#f2f3f5;
+      font-family:system-ui,sans-serif;-webkit-tap-highlight-color:transparent;touch-action:none;
+      -webkit-user-select:none;user-select:none}
+    .hud{position:fixed;top:env(safe-area-inset-top);left:0;right:0;display:flex;gap:14px;
+      padding:12px 16px;align-items:center;pointer-events:none;z-index:2;font-weight:700;flex-wrap:wrap}
+    .hud a{color:#6c8cff;text-decoration:none;font-size:.9rem;pointer-events:auto;font-weight:400}
+    .hud .best{color:#7fe7c4}
+    .hud .coin{color:#f2c14e}
+    .hud .time{margin-left:auto;color:#9fb4ff}
+    .hint{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 14px);left:0;right:0;text-align:center;
+      color:#7d8493;font-size:.85rem;z-index:2;pointer-events:none}
+    /* on-screen touch pads */
+    .pads{position:fixed;inset:0;z-index:2;pointer-events:none}
+    .pad{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 56px);width:74px;height:74px;border-radius:50%;
+      background:rgba(108,140,255,.12);border:1px solid rgba(108,140,255,.35);display:grid;place-items:center;
+      color:#9fb4ff;font-size:1.5rem;pointer-events:auto;backdrop-filter:blur(2px)}
+    .pad:active{background:rgba(108,140,255,.28)}
+    #padL{left:calc(env(safe-area-inset-left) + 18px)} #padR{left:calc(env(safe-area-inset-left) + 104px)}
+    #padGas{right:calc(env(safe-area-inset-right) + 18px);background:rgba(127,231,196,.14);border-color:rgba(127,231,196,.4);color:#7fe7c4}
+    .over{position:fixed;inset:0;display:none;place-items:center;background:rgba(8,9,13,.8);z-index:3;text-align:center}
+    .over.show{display:grid} .over h2{margin:0 0 6px;font-size:1.8rem;color:#7fe7c4}
+    .over .row{color:#cdd2dd;margin:3px 0} .over b{color:#f2c14e}
+    .over button{all:unset;margin-top:16px;color:#0e0f13;background:linear-gradient(135deg,#7fe7c4,#46c39a);
+      font-weight:700;padding:12px 24px;border-radius:12px;cursor:pointer}
+    canvas{display:block;width:100%;height:100%;touch-action:none}
+  </style>
+</head>
+<body>
+  <div class="hud"><a href="../../">← Racing</a>
+    <span class="best">Best: <span id="best">0</span></span>
+    <span class="coin">Coins: <span id="coins">0</span>/<span id="coinTotal">0</span></span>
+    <span class="time">⏱ <span id="time">20.0</span></span></div>
+  <div class="hint">swipe / arrows · drag to steer · gas pads · Space boost · R restart · P pause</div>
+  <div class="pads">
+    <div class="pad" id="padL">◄</div>
+    <div class="pad" id="padR">►</div>
+    <div class="pad" id="padGas">⛽</div>
+  </div>
+  <div class="over" id="over"><div>
+    <h2 id="overTitle">Lap done!</h2>
+    <div class="row">Score <b id="finalScore">0</b></div>
+    <div class="row">Best <b id="finalBest">0</b></div>
+    <button id="again">Race again ⟳</button></div></div>
+  <canvas id="c"></canvas>
+  <script type="module">
+    import { onDrag, onSwipe } from './touch.js';
+
+    const SLUG='drift-circuit', BEST_KEY='gamf-racing-'+SLUG+'-best';
+    const canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
+    let W=0,H=0,DPR=1;
+    function resize(){ DPR=Math.min(devicePixelRatio||1,2); W=innerWidth; H=innerHeight;
+      canvas.width=W*DPR; canvas.height=H*DPR; canvas.style.width=W+'px'; canvas.style.height=H+'px';
+      ctx.setTransform(DPR,0,0,DPR,0,0); }
+    addEventListener('resize',resize); resize();
+
+    // seeded LCG
+    let seed=1337; const rnd=()=> (seed=(seed*1103515245+12345)&0x7fffffff)/0x7fffffff;
+
+    // ---- world: an oval-ish circuit defined by a centerline polygon ----
+    const WORLD={cx:0,cy:0,scale:1};
+    // centerline points (in world units) — a rounded rectangle "circuit"
+    const trackPts=[]; (function(){
+      const rx=360, ry=240, n=64;
+      for(let i=0;i<n;i++){ const a=i/n*Math.PI*2;
+        // squircle for a more circuit-y shape
+        const cx=Math.cos(a), sy=Math.sin(a);
+        const x=Math.sign(cx)*Math.pow(Math.abs(cx),0.72)*rx;
+        const y=Math.sign(sy)*Math.pow(Math.abs(sy),0.72)*ry;
+        trackPts.push({x,y});
+      }
+    })();
+    const TRACK_W=86; // half-width of tarmac
+
+    // checkpoints / coins placed along the centerline
+    let coins=[]; let coinTotal=0;
+    function placeCoins(){ coins=[]; const every=4; // every Nth centerline node
+      for(let i=0;i<trackPts.length;i+=every){
+        const p=trackPts[i]; coins.push({x:p.x,y:p.y,got:false,phase:rnd()*6.28});
+      }
+      coinTotal=coins.length; document.getElementById('coinTotal').textContent=coinTotal;
+    }
+
+    // car state
+    const car={x:0,y:0,a:0,vx:0,vy:0,speed:0,drift:0};
+    // particles
+    const parts=[];
+    function spawnPart(x,y,col,n,spd){ for(let i=0;i<n;i++){ const a=rnd()*6.28,s=rnd()*spd;
+      parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,col,r:2+rnd()*3}); } }
+
+    let coinsGot,timeLeft,running,paused,score,best,lapStarted;
+    best=+(localStorage.getItem(BEST_KEY)||0);
+    document.getElementById('best').textContent=best;
+
+    function reset(){ seed=1337; placeCoins();
+      // start the car at the bottom of the track facing right
+      const s0=trackPts[Math.floor(trackPts.length*0.0)];
+      const s1=trackPts[1];
+      car.x=s0.x; car.y=s0.y; car.a=Math.atan2(s1.y-s0.y,s1.x-s0.x);
+      car.vx=0; car.vy=0; car.speed=0; car.drift=0;
+      coinsGot=0; timeLeft=22; running=true; paused=false; score=0; lapStarted=false;
+      parts.length=0;
+      document.getElementById('coins').textContent=0;
+      document.getElementById('time').textContent=timeLeft.toFixed(1);
+      document.getElementById('over').classList.remove('show');
+    }
+
+    // ---- input ----
+    const input={left:false,right:false,gas:false,boost:false};
+    let steer=0; // -1..1 from drag
+    onDrag(canvas,{ move:({dx})=>{ if(running&&!paused){ steer=Math.max(-1,Math.min(1,steer+dx*0.02)); input.gas=true; } },
+                   end:()=>{ steer*=0.3; setTimeout(()=>{ if(!input.left&&!input.right) input.gas=false; },120); } });
+    onSwipe(canvas,(d)=>{ if(d==='left') flick(-1); else if(d==='right') flick(1);
+      else if(d==='up'){ input.gas=true; input.boost=true; setTimeout(()=>{ input.boost=false; },650); } });
+    function flick(s){ steer=Math.max(-1,Math.min(1,steer+s*0.6)); input.gas=true; }
+
+    // touch pads
+    function bindPad(id,on){ const el=document.getElementById(id);
+      const set=(v)=>e=>{ e.preventDefault(); on(v); };
+      el.addEventListener('pointerdown',set(true)); el.addEventListener('pointerup',set(false));
+      el.addEventListener('pointercancel',set(false)); el.addEventListener('pointerleave',set(false)); }
+    bindPad('padL',v=>input.left=v); bindPad('padR',v=>input.right=v); bindPad('padGas',v=>input.gas=v);
+
+    const KEYS=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','A','d','D','w','W','s','S',' ','Enter','r','R','p','P']);
+    addEventListener('keydown',(e)=>{
+      if(KEYS.has(e.key)) e.preventDefault();
+      switch(e.key){
+        case 'ArrowLeft': case 'a': case 'A': input.left=true; break;
+        case 'ArrowRight': case 'd': case 'D': input.right=true; break;
+        case 'ArrowUp': case 'w': case 'W': input.gas=true; break;
+        case 'ArrowDown': case 's': case 'S': input.gas=false; break;
+        case ' ': case 'Enter': if(!running){ reset(); } else input.boost=true; break;
+        case 'r': case 'R': reset(); break;
+        case 'p': case 'P': if(running) paused=!paused; break;
+      }
+    });
+    addEventListener('keyup',(e)=>{
+      switch(e.key){
+        case 'ArrowLeft': case 'a': case 'A': input.left=false; break;
+        case 'ArrowRight': case 'd': case 'D': input.right=false; break;
+        case 'ArrowUp': case 'w': case 'W': input.gas=false; break;
+        case ' ': case 'Enter': input.boost=false; break;
+      }
+    });
+    document.getElementById('again').onclick=reset;
+
+    // ---- helpers ----
+    function nearestTrackDist(x,y){ let best=1e9;
+      for(let i=0;i<trackPts.length;i++){ const p=trackPts[i], q=trackPts[(i+1)%trackPts.length];
+        const d=segDist(x,y,p.x,p.y,q.x,q.y); if(d<best) best=d; }
+      return best; }
+    function segDist(px,py,x1,y1,x2,y2){ const dx=x2-x1,dy=y2-y1; const l2=dx*dx+dy*dy||1;
+      let t=((px-x1)*dx+(py-y1)*dy)/l2; t=Math.max(0,Math.min(1,t));
+      const cx=x1+t*dx, cy=y1+t*dy; return Math.hypot(px-cx,py-cy); }
+
+    function end(win){ running=false;
+      score=Math.round(coinsGot*100 + (win? timeLeft*25 : 0));
+      if(score>best){ best=score; localStorage.setItem(BEST_KEY,best); document.getElementById('best').textContent=best; }
+      document.getElementById('overTitle').textContent = win? 'Circuit cleared!' : "Time's up!";
+      document.getElementById('finalScore').textContent=score;
+      document.getElementById('finalBest').textContent=best;
+      document.getElementById('over').classList.add('show'); }
+
+    // ---- update ----
+    let last=performance.now();
+    function update(dt){
+      // steering
+      const turning=(input.left?-1:0)+(input.right?1:0)+steer;
+      const accel = input.gas ? (input.boost?0.36:0.22) : -0.12;
+      car.speed += accel*dt*60; car.speed=Math.max(0,Math.min(input.boost?9:6.5,car.speed));
+      // turn rate scales with speed (no turning when stopped)
+      const grip=0.052*Math.min(1,car.speed/3);
+      car.a += turning*grip*dt*60;
+      // velocity with a little drift (lateral slide)
+      const fx=Math.cos(car.a), fy=Math.sin(car.a);
+      const targetVx=fx*car.speed, targetVy=fy*car.speed;
+      const slide = 0.18*Math.abs(turning)*Math.min(1,car.speed/4);
+      car.drift += (slide-car.drift)*0.1;
+      car.vx += (targetVx-car.vx)*(0.16-car.drift*0.1);
+      car.vy += (targetVy-car.vy)*(0.16-car.drift*0.1);
+      car.x += car.vx*dt*60*0.18; car.y += car.vy*dt*60*0.18;
+
+      // off-track friction
+      const d=nearestTrackDist(car.x,car.y);
+      if(d>TRACK_W){ car.speed*=0.9; car.vx*=0.9; car.vy*=0.9;
+        if(car.speed>1 && rnd()<0.5) spawnPart(car.x,car.y,'#7d6a4a',2,2); }
+
+      // drift smoke
+      if(car.drift>0.05 && car.speed>2){ const bx=car.x-fx*16, by=car.y-fy*16;
+        spawnPart(bx,by,'rgba(180,190,210,0.5)',1,1); }
+
+      // coins
+      for(const c of coins){ if(c.got) continue; c.phase+=dt*4;
+        if(Math.hypot(car.x-c.x,car.y-c.y)<26){ c.got=true; coinsGot++;
+          document.getElementById('coins').textContent=coinsGot;
+          spawnPart(c.x,c.y,'#f2c14e',14,4); timeLeft=Math.min(timeLeft+1.2,30);
+          if(coinsGot>=coinTotal) end(true); } }
+
+      // timer
+      timeLeft-=dt; if(timeLeft<=0){ timeLeft=0; end(false); }
+      document.getElementById('time').textContent=timeLeft.toFixed(1);
+
+      // particles
+      for(let i=parts.length-1;i>=0;i--){ const p=parts[i]; p.x+=p.vx; p.y+=p.vy; p.vx*=0.92; p.vy*=0.92;
+        p.life-=dt*1.6; if(p.life<=0) parts.splice(i,1); }
+    }
+
+    // ---- render ----
+    let bgT=0;
+    function draw(){
+      bgT+=0.004;
+      // animated background gradient
+      const g=ctx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,'#11141f'); g.addColorStop(1,'#0a0c12');
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      // subtle moving grid glow
+      ctx.save(); ctx.globalAlpha=0.06; ctx.strokeStyle='#6c8cff'; ctx.lineWidth=1;
+      const gs=46, off=(bgT*40)%gs;
+      for(let x=-off;x<W;x+=gs){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
+      for(let y=-off;y<H;y+=gs){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+      ctx.restore();
+
+      // camera follows car
+      ctx.save();
+      ctx.translate(W/2,H/2);
+      ctx.scale(1,1);
+      ctx.translate(-car.x,-car.y);
+
+      // ---- track tarmac ----
+      ctx.lineJoin='round'; ctx.lineCap='round';
+      // outer glow band
+      ctx.beginPath(); pathTrack(); ctx.closePath();
+      ctx.strokeStyle='#1c2230'; ctx.lineWidth=TRACK_W*2; ctx.stroke();
+      // edge lines (neon)
+      ctx.save(); ctx.shadowBlur=18; ctx.shadowColor='#6c8cff';
+      ctx.beginPath(); pathTrack(); ctx.closePath();
+      ctx.strokeStyle='rgba(108,140,255,0.85)'; ctx.lineWidth=TRACK_W*2; ctx.globalCompositeOperation='source-over';
+      // draw thin neon edges by stroking a slightly inner & outer offset is complex; instead stroke center dashed line
+      ctx.restore();
+      // center dashed racing line
+      ctx.save(); ctx.shadowBlur=8; ctx.shadowColor='#7fe7c4';
+      ctx.setLineDash([14,18]); ctx.lineDashOffset=-bgT*120;
+      ctx.beginPath(); pathTrack(); ctx.closePath();
+      ctx.strokeStyle='rgba(127,231,196,0.45)'; ctx.lineWidth=3; ctx.stroke();
+      ctx.setLineDash([]); ctx.restore();
+
+      // ---- coins ----
+      for(const c of coins){ if(c.got) continue;
+        const r=12+Math.sin(c.phase)*2;
+        ctx.save(); ctx.shadowBlur=16; ctx.shadowColor='#f2c14e';
+        const cg=ctx.createRadialGradient(c.x,c.y,1,c.x,c.y,r);
+        cg.addColorStop(0,'#fff1c0'); cg.addColorStop(1,'#f2a830');
+        ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(c.x,c.y,r,0,6.28); ctx.fill();
+        ctx.restore();
+      }
+
+      // ---- particles ----
+      for(const p of parts){ ctx.globalAlpha=Math.max(0,p.life);
+        ctx.fillStyle=p.col; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*p.life,0,6.28); ctx.fill(); }
+      ctx.globalAlpha=1;
+
+      // ---- car ----
+      ctx.save();
+      ctx.translate(car.x,car.y); ctx.rotate(car.a);
+      // soft drop shadow
+      ctx.fillStyle='rgba(0,0,0,0.4)'; roundRect(-14,-6,32,18,5);
+      // body with gradient + glow
+      ctx.shadowBlur=14; ctx.shadowColor='#f2c14e';
+      const bg=ctx.createLinearGradient(-16,0,16,0); bg.addColorStop(0,'#f2c14e'); bg.addColorStop(1,'#f0a020');
+      ctx.fillStyle=bg; roundRect(-16,-9,32,18,5);
+      ctx.shadowBlur=0;
+      // cabin
+      ctx.fillStyle='#10131f'; roundRect(-4,-6,12,12,3);
+      // tail light glow
+      ctx.shadowBlur=10; ctx.shadowColor='#e0556b'; ctx.fillStyle='#e0556b'; roundRect(-16,-7,3,14,2);
+      ctx.shadowBlur=0;
+      ctx.restore();
+
+      ctx.restore();
+
+      // pause overlay
+      if(paused){ ctx.fillStyle='rgba(8,9,13,0.6)'; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle='#9fb4ff'; ctx.font='700 28px system-ui'; ctx.textAlign='center';
+        ctx.fillText('Paused — P to resume', W/2, H/2); ctx.textAlign='left'; }
+    }
+    function pathTrack(){ ctx.moveTo(trackPts[0].x,trackPts[0].y);
+      for(let i=1;i<trackPts.length;i++) ctx.lineTo(trackPts[i].x,trackPts[i].y); }
+    function roundRect(x,y,w,h,r){ ctx.beginPath();
+      ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+      ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); ctx.fill(); }
+
+    function loop(now){ requestAnimationFrame(loop);
+      let dt=(now-last)/1000; last=now; if(dt>0.05) dt=0.05;
+      if(running&&!paused) update(dt);
+      draw();
+    }
+    reset(); requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

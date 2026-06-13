@@ -3,6 +3,16 @@
   "title": "Racing",
   "games": [
     {
+      "slug": "drift-circuit",
+      "title": "Drift Circuit",
+      "path": "games/drift-circuit/",
+      "icon": "🏁",
+      "dims": "2D",
+      "tags": ["drift", "time-trial", "coins"],
+      "license": "MIT",
+      "credit": "Gamf original"
+    },
+    {
       "slug": "highway",
       "title": "Highway",
       "path": "games/highway/",
