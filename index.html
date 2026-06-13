@@ -3,116 +3,131 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#07080c">
-  <title>Racing — Gamf</title>
-  <meta name="description" content="Racing games on Gamf — touch-first, open-source browser games.">
+  <meta name="theme-color" content="#15110e">
+  <title>Racing — Gamf Arcade</title>
+  <meta name="description" content="Racing cabinets on Gamf Arcade — touch-first, open-source browser games. Insert coin.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="gamf.css">
-  <style>
-    /* compact genre hero band — uses the shared accent */
-    .gx-genre-hero { display: flex; align-items: center; gap: var(--sp-4); margin: var(--sp-4) 0 var(--sp-6);
-      padding: clamp(18px, 5vw, 32px); border-radius: var(--r-xl); border: 1px solid var(--gx-line);
-      background: linear-gradient(120deg, color-mix(in srgb, var(--gx-accent) 28%, var(--gx-bg-2)) 0%, var(--gx-bg-2) 60%);
-      box-shadow: var(--sh-2); }
-    .gx-genre-hero__icon { flex: none; width: clamp(56px, 14vw, 76px); height: clamp(56px, 14vw, 76px);
-      border-radius: var(--r-lg); display: grid; place-items: center; color: #fff;
-      background: linear-gradient(135deg, var(--gx-accent), color-mix(in srgb, var(--gx-accent) 30%, #000));
-      box-shadow: 0 0 24px color-mix(in srgb, var(--gx-accent) 50%, transparent); }
-    .gx-genre-hero__icon svg { width: 52%; height: 52%; }
-    .gx-genre-hero__title { font-size: var(--fs-2xl); line-height: 1.02; }
-    .gx-genre-hero__count { color: var(--gx-text-2); font-size: var(--fs-md); margin-top: 4px; font-family: var(--gx-font-display); }
-  </style>
 </head>
-<body class="gx" style="--gx-accent:#f2c14e">
+<body class="gx">
   <script src="gamf-icons.js"></script>
   <script src="gamf-stats.js"></script>
+  <div class="gx-vignette" aria-hidden="true"></div>
 
   <nav class="gx-nav">
+    <div class="gx-nav__bar"></div>
     <div class="gx-nav__inner">
       <a class="gx-logo" href="../">
-        <span class="gx-logo__mark"><svg class="gx-ico"><use href="#i-logo"/></svg></span>
-        Gamf
+        <span class="gx-logo__mark">G</span>
+        <span class="gx-logo__word">GAMF</span>
       </a>
       <span class="gx-nav__spacer"></span>
-      <div class="gx-nav__links">
-        <a class="gx-btn gx-btn--ghost gx-btn--sm" href="../"><svg class="gx-ico"><use href="#i-back"/></svg> All games</a>
-        <a class="gx-btn gx-btn--ghost gx-btn--sm" href="../stats.html"><svg class="gx-ico"><use href="#i-stats"/></svg> Stats</a>
-      </div>
+      <a class="gx-back" href="../"><svg class="gx-ico"><use href="#i-back"/></svg> All Cabinets</a>
+      <a class="gx-hiscores" href="../stats.html"><svg class="gx-ico"><use href="#i-trophy"/></svg> Hi-Scores</a>
     </div>
   </nav>
 
   <div class="gx-wrap">
-    <header class="gx-genre-hero">
-      <span class="gx-genre-hero__icon"><svg class="gx-ico"><use href="#i-car"/></svg></span>
-      <div>
-        <h1 class="gx-genre-hero__title">Racing</h1>
-        <p class="gx-genre-hero__count" id="count">Loading…</p>
-      </div>
-    </header>
+    <div class="gx-cabhead">
+      <h2 id="title">RACING</h2>
+      <span class="gx-cabhead__count" id="count">Loading…</span>
+    </div>
+    <div class="gx-grid" id="grid">
+      <div class="gx-skel"></div><div class="gx-skel"></div><div class="gx-skel"></div><div class="gx-skel"></div><div class="gx-skel"></div><div class="gx-skel"></div>
+    </div>
+    <div id="empty"></div>
 
-    <main class="gx-wrap" style="padding:0">
-      <div class="gx-grid" id="grid">
-        <div class="gx-skel"></div><div class="gx-skel"></div><div class="gx-skel"></div><div class="gx-skel"></div>
-      </div>
-    </main>
+    <footer class="gx-foot-note">Open Source · Touch First · Hosted On GitHub Pages</footer>
   </div>
 
-  <footer class="gx-foot gx-wrap">Open-source · touch-first · hosted on GitHub Pages</footer>
-
   <script type="module">
-    const ACCENT = '#f2c14e';
+    const GENRE_SLUG = "racing";
+    const GENRE_TITLE = "Racing";
+    const GENRE_ICON = "i-flag";
+
     const grid = document.getElementById('grid');
     const countEl = document.getElementById('count');
+    const emptyEl = document.getElementById('empty');
+
+    const esc = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmt = (n) => Number(n).toLocaleString('en-US');
+    const ico = (id, cls) => `<svg class="gx-ico${cls ? ' ' + cls : ''}"><use href="#${id}"/></svg>`;
+    function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
 
     if (window.gamfVisit) window.gamfVisit();
     init();
 
     async function init() {
+      const label = GENRE_TITLE.toUpperCase();
       let data;
       try {
         const res = await fetch('games.json', { cache: 'no-cache' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         data = await res.json();
       } catch (err) {
-        grid.innerHTML = `<p class="gx-error">Couldn't load games.json — ${esc(err.message)}</p>`;
+        grid.innerHTML = '';
+        emptyEl.innerHTML = `<p class="gx-error">Couldn't load games.json — ${esc(err.message)}</p>`;
         countEl.textContent = 'Unavailable';
         return;
       }
 
-      const games = data.games || [];
-      countEl.textContent = `${games.length} game${games.length === 1 ? '' : 's'}`;
-      grid.innerHTML = '';
+      const raw = data.games || [];
+      const games = raw.map((g) => decorate(g, label));
+      countEl.textContent = `${games.length} ${games.length === 1 ? 'Cabinet' : 'Cabinets'}`;
+
       if (!games.length) {
-        grid.innerHTML = `<p class="gx-empty">Nothing here yet — check back soon.</p>`;
+        grid.innerHTML = '';
+        emptyEl.innerHTML = `<div class="gx-empty"><h3>NO CABINETS YET</h3><p>Insert a different coin</p></div>`;
         return;
       }
-      for (const game of games) grid.appendChild(card(game));
+
+      emptyEl.innerHTML = '';
+      grid.innerHTML = games.map(cabinet).join('');
+      grid.querySelectorAll('.gx-cabinet').forEach((b, i) => b.addEventListener('click', () => launch(games[i])));
     }
 
-    function card(game) {
-      const a = document.createElement('a');
-      a.className = 'gx-card';
-      a.href = new URL(game.path, document.baseURI).href;
-      const cover = safeColor(game.color || ACCENT);
-      a.innerHTML = `
-        <div class="gx-cover" style="--cover:${cover}">
-          ${game.dims ? `<span class="gx-cover__dims">${esc(game.dims)}</span>` : ''}
-          <span class="gx-cover__glyph">${esc(game.icon || '🎮')}</span>
-          <span class="gx-cover__play"><svg class="gx-ico"><use href="#i-play"/></svg></span>
+    function decorate(game, label) {
+      const slug = game.slug || game.title;
+      const h = hashStr(slug + GENRE_SLUG);
+      const rating = game.rating != null ? game.rating : 3 + (h % 3);
+      const score = game.score != null ? game.score : 5000 + (h % 1495000);
+      const hot = game.hot != null ? game.hot : (/classic|retro|arcade/i.test((game.tags || []).join(' ')) || h % 5 === 0);
+      return {
+        slug: game.slug,
+        title: game.title,
+        genreLabel: label,
+        icon: GENRE_ICON,
+        dims: game.dims || '2D',
+        rating, score, hot,
+        url: new URL(game.path, document.baseURI).href,
+      };
+    }
+
+    function ratingTicks(r) { let s = ''; for (let i = 0; i < 5; i++) s += `<span class="${i < r ? 'on' : ''}"></span>`; return `<div class="gx-rate">${s}</div>`; }
+
+    function cabinet(g) {
+      return `<button class="gx-cabinet" aria-label="Play ${esc(g.title)}, ${esc(g.genreLabel)}">
+        <div class="gx-cab__plate">${ico(g.icon)}<span class="gx-cab__genre">${esc(g.genreLabel)}</span><span class="gx-cab__dims">${esc(g.dims)}</span></div>
+        <div class="gx-cab__cover${g.hot ? ' is-hot' : ''}">
+          <span class="gx-cab__big">${ico(g.icon)}</span>
+          ${g.hot ? `<span class="gx-cab__hot">${ico('i-bolt')} Hot</span>` : ''}
+          <h3 class="gx-cab__title">${esc(g.title.toUpperCase())}</h3>
         </div>
-        <div class="gx-card__body">
-          <span class="gx-card__title">${esc(game.title)}</span>
-          <span class="gx-card__meta">${(game.tags || []).slice(0, 3).map(esc).join(' · ')}</span>
-          ${game.author ? `<span class="gx-card__by">by ${esc(game.author)}</span>` : ''}
-        </div>`;
-      a.addEventListener('click', () => { if (window.gamfPlay) window.gamfPlay(game.slug); });
-      return a;
+        <div class="gx-cab__ctrl">
+          <div style="min-width:0">${ratingTicks(g.rating)}<span class="gx-cab__hi">HI ${fmt(g.score)}</span></div>
+          <span class="gx-cab__play">${ico('i-play')} Play</span>
+        </div></button>`;
     }
 
-    function esc(s = '') { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-    function safeColor(c) { return /^#[0-9a-fA-F]{3,8}$/.test(c) ? c : ACCENT; }
+    let navigating = false;
+    function launch(g) {
+      if (!g || navigating) return;
+      navigating = true;
+      if (window.gamfPlay) window.gamfPlay(g.slug);
+      window.location.href = g.url;
+    }
   </script>
 </body>
 </html>
