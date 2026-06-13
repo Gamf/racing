@@ -1,0 +1,16 @@
+{
+  "genre": "racing",
+  "title": "Racing",
+  "games": [
+    {
+      "slug": "sample-racer",
+      "title": "Lane Dash",
+      "path": "games/sample-racer/",
+      "icon": "🏎️",
+      "dims": "3D",
+      "tags": ["steer", "dodge", "three.js"],
+      "license": "MIT",
+      "credit": "Gamf sample"
+    }
+  ]
+}

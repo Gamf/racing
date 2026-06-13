@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0e0f13">
+  <title>Racing — Gamf</title>
+  <style>
+    *{box-sizing:border-box} html,body{margin:0;min-height:100%;background:#0e0f13;color:#f2f3f5;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+    header{padding:24px 16px 8px;text-align:center} h1{margin:0;font-size:2rem}
+    a.back{display:inline-block;margin:10px 0;color:#6c8cff;text-decoration:none;font-size:.9rem}
+    main{max-width:880px;margin:0 auto;padding:8px 16px 40px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+    .card{display:block;text-decoration:none;color:inherit;background:#181b24;border:1px solid #242838;
+      border-radius:16px;overflow:hidden;transition:transform .08s} .card:active{transform:scale(.97)}
+    .thumb{aspect-ratio:16/10;display:grid;place-items:center;font-size:2.4rem;
+      background:linear-gradient(135deg,#f2c14e,#11131b)}
+    .body{padding:10px 12px 14px} .title{font-weight:600} .tags{margin-top:4px;color:#7d8493;font-size:.78rem}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🏎️ Racing</h1>
+    <a class="back" href="../">← All games</a>
+  </header>
+  <main><div class="grid" id="grid">Loading…</div></main>
+  <script type="module">
+    const grid = document.getElementById('grid');
+    try {
+      const res = await fetch('games.json', { cache: 'no-cache' });
+      const { games = [] } = await res.json();
+      grid.innerHTML = games.length ? '' : 'No games yet.';
+      for (const g of games) {
+        const a = document.createElement('a');
+        a.className = 'card'; a.href = g.path;
+        a.innerHTML = `<div class="thumb">${g.icon || '🎮'}</div>
+          <div class="body"><div class="title">${g.title}</div>
+          <div class="tags">${(g.tags || []).join(' · ')}</div></div>`;
+        grid.appendChild(a);
+      }
+    } catch (e) { grid.textContent = 'Could not load games.json'; }
+  </script>
+</body>
+</html>
