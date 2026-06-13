@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#15110e">
+  <title>Traffic — Gamf</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../gamf.css">
+  <style>
+    body{ --gx-accent:#d8412b; margin:0; height:100%; overflow:hidden;
+      touch-action:none; -webkit-user-select:none; user-select:none; }
+    html,body{ height:100%; }
+    canvas{ display:block; width:100%; height:100%; touch-action:none; }
+
+    /* center "+near miss" flash */
+    #flash{ position:fixed; left:0; right:0; top:30%; z-index:5; text-align:center;
+      font-family:var(--gx-font-display); font-size:clamp(2rem,9vw,3.4rem); letter-spacing:1px;
+      color:var(--gx-amber); text-shadow:4px 4px 0 #0a0806; pointer-events:none;
+      opacity:0; transform:translateY(8px); transition:opacity .18s, transform .18s; }
+    #flash.show{ opacity:1; transform:translateY(0); }
+
+    /* speed bar under HUD */
+    #spdwrap{ position:fixed; left:max(16px,env(safe-area-inset-left));
+      right:max(16px,env(safe-area-inset-right));
+      top:calc(env(safe-area-inset-top) + 52px); z-index:4; pointer-events:none; display:flex;
+      align-items:center; gap:8px; font-family:var(--gx-font-mono); font-size:10px;
+      letter-spacing:1.5px; text-transform:uppercase; color:var(--gx-text-3); }
+    #spdbar{ flex:1; height:8px; border-radius:var(--r-2); overflow:hidden;
+      background:color-mix(in srgb, var(--gx-screen) 70%, transparent);
+      border:1px solid var(--gx-line-2); }
+    #spdfill{ height:100%; width:30%; border-radius:var(--r-2);
+      background:linear-gradient(90deg, var(--gx-amber), var(--gx-red));
+      transition:width .14s linear; }
+
+    /* on-screen lane pads (touch) */
+    #pads{ position:fixed; inset:0; z-index:3; pointer-events:none; display:none; }
+    body.touch #pads{ display:block; }
+    .pad{ position:absolute; bottom:calc(env(safe-area-inset-bottom) + 78px);
+      width:88px; height:88px; border-radius:var(--r-5); pointer-events:auto;
+      display:grid; place-items:center; color:var(--gx-text);
+      background:color-mix(in srgb, var(--gx-screen) 60%, transparent);
+      border:1px solid var(--gx-line-2); }
+    .pad:active{ background:color-mix(in srgb, var(--gx-red) 45%, transparent);
+      transform:translate(2px,2px); }
+    .pad svg{ width:34px; height:34px; }
+    #pL{ left:calc(env(safe-area-inset-left) + 16px); }
+    #pR{ right:calc(env(safe-area-inset-right) + 16px); }
+  </style>
+</head>
+<body class="gx">
+  <script src="../../gamf-icons.js"></script>
+
+  <div class="gx-hud">
+    <a class="gx-hud__back" href="../../"><svg class="gx-ico"><use href="#i-back"/></svg> Racing</a>
+    <span class="gx-hud__spacer"></span>
+    <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-flag"/></svg> <b id="score">0</b> m</span>
+    <span class="gx-pill gx-pill--best"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-trophy"/></svg> Best <b id="best">0</b></span>
+  </div>
+
+  <div id="spdwrap">SPD <div id="spdbar"><div id="spdfill"></div></div></div>
+  <div id="flash"></div>
+
+  <div class="gx-hint">
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-left"/></svg><svg class="gx-ico"><use href="#i-right"/></svg> drag / A D steer</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-bolt"/></svg> graze cars for bonus</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-pause"/></svg> P pause</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-restart"/></svg> R restart</span>
+  </div>
+
+  <div id="pads">
+    <button class="pad" id="pL" aria-label="move left"><svg class="gx-ico"><use href="#i-left"/></svg></button>
+    <button class="pad" id="pR" aria-label="move right"><svg class="gx-ico"><use href="#i-right"/></svg></button>
+  </div>
+
+  <div class="gx-modal" id="over">
+    <div class="gx-modal__card">
+      <h2 class="gx-modal__title">Crashed!</h2>
+      <div class="gx-modal__row">Distance <b id="finalScore">0</b> m</div>
+      <div class="gx-modal__row">Near misses <b id="finalMiss">0</b></div>
+      <div class="gx-modal__row">Best <b id="finalBest">0</b> m</div>
+      <p class="gx-modal__new" id="newBest"></p>
+      <button class="gx-btn gx-btn--primary" id="again"><svg class="gx-ico"><use href="#i-restart"/></svg> Drive again</button>
+    </div>
+  </div>
+
+  <div class="gx-modal" id="pauseM">
+    <div class="gx-modal__card">
+      <h2 class="gx-modal__title">Paused</h2>
+      <div class="gx-modal__row">Distance <b id="pScore">0</b> m</div>
+      <div class="gx-modal__row">Near misses <b id="pMiss">0</b></div>
+      <button class="gx-btn gx-btn--primary" id="resume"><svg class="gx-ico"><use href="#i-play"/></svg> Resume</button>
+    </div>
+  </div>
+
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { onDrag } from './touch.js';
+
+    const SLUG='traffic', BEST_KEY='gamf-racing-'+SLUG+'-best';
+
+    /* ---------- seeded RNG (LCG, no Math.random / Date) ---------- */
+    let seed=20260613;
+    function srnd(){ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; }
+    function rng(a,b){ return a+(b-a)*srnd(); }
+    function pick(arr){ return arr[(srnd()*arr.length)|0]; }
+
+    /* ---------- road layout ---------- */
+    const LANES=5;
+    const LANE_W=2.6;
+    const ROAD_HALF=(LANES*LANE_W)/2;            // road extends +/- this in x
+    function laneX(i){ return (i - (LANES-1)/2) * LANE_W; }   // centre x of lane i
+
+    /* ---------- renderer / scene ---------- */
+    const renderer=new THREE.WebGLRenderer({antialias:true});
+    renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+    renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    const scene=new THREE.Scene();
+    scene.background=new THREE.Color(0x15110e);
+    scene.fog=new THREE.Fog(0x15110e, 34, 96);
+
+    const camera=new THREE.PerspectiveCamera(62,1,0.1,300);
+
+    scene.add(new THREE.HemisphereLight(0xe8d6b8, 0x140f0b, 0.85));
+    const dl=new THREE.DirectionalLight(0xffe9c4, 1.05); dl.position.set(-9,18,8);
+    dl.castShadow=true; dl.shadow.mapSize.set(2048,2048);
+    dl.shadow.camera.near=1; dl.shadow.camera.far=120;
+    dl.shadow.camera.left=-30; dl.shadow.camera.right=30; dl.shadow.camera.top=40; dl.shadow.camera.bottom=-40;
+    scene.add(dl);
+    const accent=new THREE.PointLight(0xe8a23a, 0.6, 36); accent.position.set(0,7,0); scene.add(accent);
+
+    /* ---------- ground / grass shoulders ---------- */
+    const grass=new THREE.Mesh(new THREE.PlaneGeometry(400,2000),
+      new THREE.MeshStandardMaterial({color:0x22180f, roughness:1}));
+    grass.rotation.x=-Math.PI/2; grass.position.set(0,-0.02,-200); grass.receiveShadow=true; scene.add(grass);
+
+    const road=new THREE.Mesh(new THREE.PlaneGeometry(ROAD_HALF*2+1.4, 2000),
+      new THREE.MeshStandardMaterial({color:0x1d1813, roughness:0.95}));
+    road.rotation.x=-Math.PI/2; road.position.set(0,0,-200); road.receiveShadow=true; scene.add(road);
+
+    // curbs (red/bone striped feel via two solid rails)
+    function mkRail(side){
+      const m=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,2000),
+        new THREE.MeshStandardMaterial({color:0xd8412b, roughness:0.6, emissive:0x3a0e07, emissiveIntensity:0.5}));
+      m.position.set(side*(ROAD_HALF+0.7), 0.22, -200); m.castShadow=true; scene.add(m);
+    }
+    mkRail(-1); mkRail(1);
+
+    /* ---------- scrolling lane dashes (pooled, recycled) ---------- */
+    const DASH_GAP=8, DASHES_PER=40;
+    const dashMat=new THREE.MeshStandardMaterial({color:0xe8a23a, emissive:0x3a2606, emissiveIntensity:0.6, roughness:0.7});
+    const dashes=[];
+    for(let l=1;l<LANES;l++){
+      const lx=laneX(l)-LANE_W/2;
+      for(let k=0;k<DASHES_PER;k++){
+        const d=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.05,2.6), dashMat);
+        d.position.set(lx, 0.03, -k*DASH_GAP);
+        d.userData.baseZ=-k*DASH_GAP;
+        scene.add(d); dashes.push(d);
+      }
+    }
+    const DASH_SPAN=DASHES_PER*DASH_GAP;
+
+    /* ---------- car factory ---------- */
+    function buildCar(color, isPlayer){
+      const g=new THREE.Group();
+      const body=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.55,3.0),
+        new THREE.MeshStandardMaterial({color, metalness:0.45, roughness:0.35}));
+      body.position.y=0.45; body.castShadow=true; g.add(body);
+      const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.25,0.5,1.5),
+        new THREE.MeshStandardMaterial({color:0x100c09, metalness:0.5, roughness:0.25}));
+      cabin.position.set(0,0.85,0.1); cabin.castShadow=true; g.add(cabin);
+      const wheelMat=new THREE.MeshStandardMaterial({color:0x0a0806, roughness:0.8});
+      [[-0.78,1.0],[0.78,1.0],[-0.78,-1.0],[0.78,-1.0]].forEach(([x,z])=>{
+        const w=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.28,12),wheelMat);
+        w.rotation.z=Math.PI/2; w.position.set(x,0.28,z); g.add(w);
+      });
+      // lights: player faces -Z (forward), traffic faces depend on direction set later
+      const front=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.16,0.12),
+        new THREE.MeshStandardMaterial({color:0xfff3c0, emissive:0xffe08a, emissiveIntensity:1.7}));
+      front.position.set(0,0.45,-1.5); g.add(front);
+      const back=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.16,0.12),
+        new THREE.MeshStandardMaterial({color:0xd8412b, emissive:0xd8412b, emissiveIntensity:2.0}));
+      back.position.set(0,0.45,1.5); g.add(back);
+      g.userData={front, back, body};
+      return g;
+    }
+
+    const PLAYER_COL=0xe8a23a;
+    const player=buildCar(PLAYER_COL,true);
+    player.position.set(0,0,0); scene.add(player);
+
+    /* ---------- traffic pool ---------- */
+    const TRAFFIC_COLS=[0xd8412b, 0x4a6c8a, 0x6f8a4a, 0xb0a08a, 0x8a5a6c, 0xc77a3a];
+    const POOL=26;
+    const traffic=[];
+    for(let i=0;i<POOL;i++){
+      const g=buildCar(0xd8412b,false);
+      g.visible=false; scene.add(g);
+      traffic.push({g, lane:0, oncoming:true, speed:0, grazed:false, active:false});
+    }
+
+    /* ---------- spark burst (crash + near-miss ping) ---------- */
+    const sparks=[]; const sparkGeo=new THREE.SphereGeometry(0.14,6,6);
+    for(let i=0;i<40;i++){
+      const m=new THREE.Mesh(sparkGeo,
+        new THREE.MeshStandardMaterial({color:0xe8a23a, emissive:0xe8a23a, emissiveIntensity:1.4}));
+      m.visible=false; scene.add(m);
+      sparks.push({m,vx:0,vy:0,vz:0,life:0});
+    }
+    function burst(x,y,z,col,n,spread){
+      let c=0;
+      for(const p of sparks){
+        if(p.life>0) continue;
+        if(c++>=n) break;
+        p.m.position.set(x,y,z); p.m.material.color.set(col); p.m.material.emissive.set(col);
+        p.m.visible=true; p.vx=rng(-1,1)*spread; p.vy=rng(0.2,0.7); p.vz=rng(-1,1)*spread; p.life=1;
+      }
+    }
+
+    /* ---------- game state ---------- */
+    const $=id=>document.getElementById(id);
+    let best=+(localStorage.getItem(BEST_KEY)||0);
+    $('best').textContent=best;
+
+    let dist;            // metres travelled (score)
+    let nearMiss;        // near-miss count
+    let bonus;           // near-miss bonus metres added to score display
+    let speed;           // player forward speed (units/sec), ramps up
+    let playerLaneTarget;// target lane index
+    let alive, paused, started;
+    let spawnTimer;      // distance until next spawn batch
+    let worldZ;          // accumulated scroll (for dash scroll only)
+
+    const BASE_SPEED=26, MAX_SPEED=58, ACCEL=0.55;   // speed in world units/sec
+    const PLAYER_Z=0;                                // player stays at z=0; world scrolls toward +z
+
+    function reset(){
+      seed=20260613;
+      dist=0; nearMiss=0; bonus=0; speed=BASE_SPEED; worldZ=0;
+      playerLaneTarget=(LANES/2)|0;
+      player.position.set(laneX(playerLaneTarget),0,PLAYER_Z);
+      player.rotation.set(0,0,0);
+      alive=true; paused=false; started=false;
+      spawnTimer=14;
+      traffic.forEach(t=>{ t.active=false; t.g.visible=false; });
+      sparks.forEach(p=>{ p.life=0; p.m.visible=false; });
+      dashes.forEach(d=>{ d.position.z=d.userData.baseZ; });
+      dragX=laneX(playerLaneTarget);
+      $('score').textContent=0;
+      $('over').classList.remove('gx-show');
+      $('pauseM').classList.remove('gx-show');
+      flashHide();
+      updSpeedBar();
+    }
+
+    let flashT=0;
+    function flash(txt,col){ const f=$('flash'); f.textContent=txt; f.style.color=col||'var(--gx-amber)';
+      f.classList.add('show'); flashT=0.7; }
+    function flashHide(){ $('flash').classList.remove('show'); flashT=0; }
+
+    function updSpeedBar(){
+      const pct=(speed-BASE_SPEED)/(MAX_SPEED-BASE_SPEED);
+      $('spdfill').style.width=(20+Math.max(0,Math.min(1,pct))*80).toFixed(0)+'%';
+    }
+
+    function scoreTotal(){ return Math.floor(dist + bonus); }
+
+    /* ---------- spawning ----------
+       Spawn a batch a long way ahead (negative z). At least one lane is always
+       left open so the player can always thread through. */
+    function spawnBatch(){
+      const ahead=-120 - rng(0,18);
+      // choose lanes to fill (leave >=1 gap)
+      const order=[0,1,2,3,4];
+      // shuffle deterministically
+      for(let i=order.length-1;i>0;i--){ const j=(srnd()*(i+1))|0; const tmp=order[i]; order[i]=order[j]; order[j]=tmp; }
+      const fillCount=2 + ((srnd()*3)|0);            // 2..4 cars (<= LANES-1)
+      const lanesToFill=order.slice(0,Math.min(fillCount,LANES-1));
+      for(const lane of lanesToFill){
+        const t=traffic.find(o=>!o.active);
+        if(!t) break;
+        // ~60% oncoming (moving toward player, faster closing), 40% same-way (slower)
+        const oncoming=srnd()<0.6;
+        t.active=true; t.lane=lane; t.oncoming=oncoming; t.grazed=false;
+        const col=oncoming?pick(TRAFFIC_COLS):pick([0x4a6c8a,0x6f8a4a,0xb0a08a,0x8a5a6c]);
+        t.g.userData.body.material.color.set(col);
+        // same-way cars move away from camera (toward -z) slowly; oncoming move toward +z
+        t.speed = oncoming ? rng(8,16) : rng(10,18);
+        // orient: same-way faces forward (-z, like player), oncoming faces +z (toward camera)
+        t.g.rotation.y = oncoming ? Math.PI : 0;
+        t.g.position.set(laneX(lane), 0, ahead - rng(0,10));
+        t.g.visible=true;
+      }
+    }
+
+    /* ---------- input ---------- */
+    let dragX=0;             // smoothed target x from drag
+    const keys={left:false,right:false};
+    const GAMEKEYS=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','A','d','D','w','W','s','S',' ','Enter','r','R','p','P']);
+
+    function stepLane(dir){
+      playerLaneTarget=Math.max(0,Math.min(LANES-1, playerLaneTarget+dir));
+      dragX=laneX(playerLaneTarget);
+      started=true;
+    }
+
+    addEventListener('keydown',(e)=>{
+      if(GAMEKEYS.has(e.key)) e.preventDefault();
+      if(e.repeat) return;
+      if(e.key==='r'||e.key==='R'){ reset(); return; }
+      if(e.key==='p'||e.key==='P'){ togglePause(); return; }
+      if(!alive){ if(e.key===' '||e.key==='Enter') reset(); return; }
+      if(paused){ if(e.key===' '||e.key==='Enter') togglePause(); return; }
+      if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A'){ keys.left=true; stepLane(-1); }
+      else if(e.key==='ArrowRight'||e.key==='d'||e.key==='D'){ keys.right=true; stepLane(1); }
+      if(e.key===' '||e.key==='Enter') started=true;
+    });
+    addEventListener('keyup',(e)=>{
+      if(GAMEKEYS.has(e.key)) e.preventDefault();
+      if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') keys.left=false;
+      else if(e.key==='ArrowRight'||e.key==='d'||e.key==='D') keys.right=false;
+    });
+
+    // touch: free drag steer across the road, snaps to nearest lane on release
+    onDrag(renderer.domElement,{
+      start:()=>{ if(alive&&!paused) started=true; },
+      move:({dx})=>{ if(!alive||paused) return; started=true;
+        const sc=(ROAD_HALF*2)/Math.max(240, innerWidth*0.6);
+        dragX=Math.max(-ROAD_HALF+0.7, Math.min(ROAD_HALF-0.7, dragX + dx*sc));
+        // keep target lane in sync with nearest lane for keyboard fallback
+        let bi=0,bd=1e9; for(let i=0;i<LANES;i++){ const d=Math.abs(laneX(i)-dragX); if(d<bd){bd=d;bi=i;} }
+        playerLaneTarget=bi;
+      },
+      end:()=>{ if(!alive||paused) return; dragX=laneX(playerLaneTarget); }
+    });
+
+    function bindTap(el,fn){
+      el.addEventListener('pointerdown',e=>{ e.preventDefault(); if(alive&&!paused) fn(); });
+    }
+    bindTap($('pL'),()=>stepLane(-1));
+    bindTap($('pR'),()=>stepLane(1));
+    addEventListener('touchstart',()=>document.body.classList.add('touch'),{once:true,passive:true});
+
+    function togglePause(){
+      if(!alive) return;
+      paused=!paused;
+      if(paused){ $('pScore').textContent=scoreTotal(); $('pMiss').textContent=nearMiss; $('pauseM').classList.add('gx-show'); }
+      else $('pauseM').classList.remove('gx-show');
+    }
+    $('resume').onclick=()=>{ if(paused) togglePause(); };
+    $('again').onclick=reset;
+
+    function resize(){ renderer.setSize(innerWidth,innerHeight);
+      camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); }
+    addEventListener('resize',resize); resize();
+
+    function end(){
+      if(!alive) return;
+      alive=false;
+      burst(player.position.x,0.6,player.position.z,0xd8412b,18,2.4);
+      burst(player.position.x,0.6,player.position.z,0xe8a23a,12,1.6);
+      const total=scoreTotal();
+      let isNew=false;
+      if(total>best){ best=total; isNew=true; localStorage.setItem(BEST_KEY,String(best)); $('best').textContent=best; }
+      $('finalScore').textContent=total;
+      $('finalMiss').textContent=nearMiss;
+      $('finalBest').textContent=best;
+      $('newBest').textContent=isNew?'New best!':'';
+      $('over').classList.add('gx-show');
+    }
+
+    /* ---------- update / loop ---------- */
+    const DT=1/60;
+    const PLAYER_HALF_X=0.85, PLAYER_HALF_Z=1.6;
+    const CAR_HALF_X=0.85, CAR_HALF_Z=1.6;
+    const GRAZE_X=0.55;     // extra x margin that counts as a near miss (no contact)
+
+    function step(){
+      // ramp speed with distance
+      speed=Math.min(MAX_SPEED, speed + ACCEL*DT);
+      const adv=speed*DT;          // world advance this frame
+      dist += adv*0.6;             // metres (tuned)
+      worldZ += adv;
+
+      // steer player toward dragX (drag) or lane target (keys both already set dragX)
+      player.position.x += (dragX - player.position.x)*0.32;
+      // visual bank into the turn
+      player.rotation.z = (dragX - player.position.x)*0.12;
+      player.rotation.y = (player.position.x - dragX)*0.06;
+
+      // scroll dashes
+      for(const d of dashes){
+        d.position.z += adv;
+        if(d.position.z > 12) d.position.z -= DASH_SPAN;
+      }
+
+      // move traffic. Player is fixed at z=0; world scrolls +z toward camera by adv.
+      // oncoming: also approaches by its own speed -> faster closing.
+      // same-way: recedes by its own speed -> slower closing (can even fall behind).
+      for(const t of traffic){
+        if(!t.active) continue;
+        const closing = adv + (t.oncoming ? t.speed*DT : -t.speed*DT);
+        t.g.position.z += closing;
+        // spin nothing fancy; bob lights none
+
+        // recycle when well past the player
+        if(t.g.position.z > 24){ t.active=false; t.g.visible=false; continue; }
+
+        // collision / near-miss vs player (only around z=0 band)
+        const ddz=Math.abs(t.g.position.z - player.position.z);
+        if(ddz < (PLAYER_HALF_Z+CAR_HALF_Z)){
+          const ddx=Math.abs(t.g.position.x - player.position.x);
+          if(ddx < (PLAYER_HALF_X+CAR_HALF_X)){
+            end(); return;
+          } else if(!t.grazed && ddx < (PLAYER_HALF_X+CAR_HALF_X+GRAZE_X)){
+            // near miss!
+            t.grazed=true; nearMiss++;
+            const add=10 + Math.floor(speed/6);
+            bonus += add;
+            flash('+'+add+' GRAZE', 'var(--gx-amber)');
+            burst(t.g.position.x, 0.7, t.g.position.z, 0xe8a23a, 6, 0.8);
+          }
+        }
+      }
+
+      // spawn batches as we travel
+      spawnTimer -= adv;
+      if(spawnTimer<=0){
+        spawnBatch();
+        // denser as speed rises
+        const base=24 - (speed-BASE_SPEED)*0.18;
+        spawnTimer = Math.max(11, base) + rng(0,5);
+      }
+
+      $('score').textContent=scoreTotal();
+      updSpeedBar();
+    }
+
+    function updateCamera(){
+      // chase cam slightly behind & above player; follows x a little
+      const tx=player.position.x*0.5;
+      camera.position.x += (tx - camera.position.x)*0.1;
+      camera.position.y += (5.2 - camera.position.y)*0.1;
+      camera.position.z += (9.5 - camera.position.z)*0.1;
+      camera.lookAt(player.position.x*0.3, 0.8, -14);
+      accent.position.set(player.position.x, 7, player.position.z-4);
+      dl.target.position.set(player.position.x,0,player.position.z-6); dl.target.updateMatrixWorld();
+    }
+
+    let t=0;
+    function animate(){
+      requestAnimationFrame(animate);
+      t+=DT;
+      if(alive && !paused && started){ step(); }
+      else if(alive && !paused && !started){
+        // idle attract: gentle scroll so the road reads as "moving"
+        const adv=BASE_SPEED*0.35*DT;
+        for(const d of dashes){ d.position.z+=adv; if(d.position.z>12) d.position.z-=DASH_SPAN; }
+        player.position.y=Math.sin(t*4)*0.01;
+      }
+
+      // wheels of player + idle bob handled implicitly; spin via dashes is enough
+
+      // animate sparks always
+      for(const p of sparks){
+        if(p.life>0){
+          p.life-=0.032; p.vy-=0.02;
+          p.m.position.x+=p.vx; p.m.position.y+=p.vy; p.m.position.z+=p.vz;
+          if(p.m.position.y<0.06){ p.m.position.y=0.06; p.vy*=-0.3; }
+          p.m.scale.setScalar(Math.max(0.01,p.life));
+          if(p.life<=0) p.m.visible=false;
+        }
+      }
+
+      if(flashT>0){ flashT-=DT; if(flashT<=0) flashHide(); }
+
+      updateCamera();
+      renderer.render(scene,camera);
+    }
+
+    camera.position.set(0,5.2,9.5);
+    reset(); updateCamera();
+    animate();
+  </script>
+</body>
+</html>

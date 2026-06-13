@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#15110e">
+  <title>Slalom — Gamf</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../gamf.css">
+  <style>
+    /* genre accent: racing amber */
+    body{ --gx-accent:#e8a23a; margin:0; height:100%; overflow:hidden;
+      touch-action:none; -webkit-user-select:none; user-select:none; }
+    html,body{ height:100%; }
+    canvas{ display:block; width:100%; height:100%; touch-action:none; }
+    /* on-screen touch steering pads (touch-first) */
+    .pads{ position:fixed; inset:0; z-index:5; pointer-events:none; }
+    .pad{ position:absolute; bottom:calc(env(safe-area-inset-bottom) + 70px);
+      width:80px; height:80px; border-radius:50%; display:grid; place-items:center;
+      pointer-events:auto; color:var(--gx-text);
+      background:color-mix(in srgb, var(--gx-accent) 16%, transparent);
+      border:1px solid color-mix(in srgb, var(--gx-accent) 45%, var(--gx-line));
+      backdrop-filter:blur(6px); transition:transform .1s, background .12s; }
+    .pad:active{ transform:scale(.92); background:color-mix(in srgb, var(--gx-accent) 34%, transparent); }
+    .pad svg{ width:30px; height:30px; }
+    #padL{ left:calc(env(safe-area-inset-left) + 22px); }
+    #padR{ right:calc(env(safe-area-inset-right) + 22px); }
+    /* gate flash banner */
+    .flash{ position:fixed; left:0; right:0; top:32%; z-index:5; text-align:center;
+      pointer-events:none; font-family:var(--gx-font-display); font-weight:400;
+      letter-spacing:1px; text-transform:uppercase;
+      font-size:clamp(1.7rem,8vw,2.8rem); color:var(--gx-amber);
+      text-shadow:3px 3px 0 var(--gx-ink);
+      opacity:0; transition:opacity .2s, transform .2s; transform:translateY(8px) scale(.96); }
+    .flash.show{ opacity:1; transform:translateY(0) scale(1); }
+  </style>
+</head>
+<body class="gx">
+  <script src="../../gamf-icons.js"></script>
+
+  <!-- top HUD -->
+  <div class="gx-hud">
+    <a class="gx-hud__back" href="../../"><svg class="gx-ico"><use href="#i-back"/></svg> Racing</a>
+    <span class="gx-hud__spacer"></span>
+    <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-flag"/></svg> Gates <b><span id="gates">0</span></b></span>
+    <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-pause"/></svg> <b id="time">30.0</b></span>
+    <span class="gx-pill gx-pill--best"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-trophy"/></svg> Best <b id="best">0</b></span>
+  </div>
+
+  <!-- controls hint -->
+  <div class="gx-hint">
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-target"/></svg> drag to carve</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-left"/></svg><svg class="gx-ico"><use href="#i-right"/></svg> A / D steer</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-pause"/></svg> P pause</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-restart"/></svg> R restart</span>
+  </div>
+
+  <!-- on-screen steering -->
+  <div class="pads">
+    <div class="pad" id="padL"><svg class="gx-ico"><use href="#i-left"/></svg></div>
+    <div class="pad" id="padR"><svg class="gx-ico"><use href="#i-right"/></svg></div>
+  </div>
+
+  <div class="flash" id="flash"></div>
+
+  <!-- game-over / pause modal -->
+  <div class="gx-modal" id="over">
+    <div class="gx-modal__card">
+      <h2 class="gx-modal__title" id="overTitle">Run over!</h2>
+      <div class="gx-modal__row">Gates cleared <b id="finalGates">0</b></div>
+      <div class="gx-modal__row">Gates missed <b id="finalMissed">0</b></div>
+      <div class="gx-modal__row">Score <b id="finalScore">0</b></div>
+      <div class="gx-modal__row">Best <b id="finalBest">0</b></div>
+      <p class="gx-modal__new" id="newBest"></p>
+      <button class="gx-btn gx-btn--primary" id="again"><svg class="gx-ico"><use href="#i-restart"/></svg> Race again</button>
+    </div>
+  </div>
+
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { onDrag } from './touch.js';
+
+    const SLUG='slalom', BEST_KEY='gamf-racing-slalom-best';
+
+    // ---------- seeded LCG (no nondeterministic random/clock APIs) ----------
+    let seed=20260613;
+    const rnd=()=> (seed=(seed*1103515245+12345)&0x7fffffff)/0x7fffffff;
+
+    // ---------- palette ----------
+    const COL_BG=0x15110e, COL_RED=0xd8412b, COL_AMBER=0xe8a23a, COL_BONE=0xf4ede1;
+    const COL_SNOW=0xe7ddcb, COL_SNOW2=0xcdbfa8;
+
+    // ---------- renderer / scene ----------
+    const renderer=new THREE.WebGLRenderer({antialias:true});
+    renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+    renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    const scene=new THREE.Scene();
+    scene.background=new THREE.Color(COL_BG);
+    scene.fog=new THREE.Fog(COL_BG, 90, 300);
+
+    const camera=new THREE.PerspectiveCamera(60,1,0.1,700);
+
+    // lights
+    scene.add(new THREE.HemisphereLight(0xfff1d8,0x2a1c12,0.85));
+    const dl=new THREE.DirectionalLight(0xfff0d6,1.05); dl.position.set(-50,90,40);
+    dl.castShadow=true; dl.shadow.mapSize.set(2048,2048);
+    dl.shadow.camera.near=10; dl.shadow.camera.far=420;
+    dl.shadow.camera.left=-120; dl.shadow.camera.right=120; dl.shadow.camera.top=200; dl.shadow.camera.bottom=-200;
+    scene.add(dl);
+    const accent=new THREE.PointLight(COL_AMBER,0.9,90); accent.position.set(0,18,0); scene.add(accent);
+
+    // ---------- slope geometry ----------
+    // The course runs downhill along +Z. The skier descends in +Z forever.
+    // World Y of the snow at a given Z descends with a constant pitch.
+    const PITCH=0.30;            // slope steepness (Y drops as Z grows)
+    const COURSE_HALF=34;        // playfield half-width in X
+    const groundY=(z)=> -z*PITCH;
+
+    // tilted snow plane (a big strip we slide under the skier)
+    const SLOPE_LEN=1400;
+    const snowMat=new THREE.MeshStandardMaterial({color:COL_SNOW, metalness:0.0, roughness:0.96});
+    const snow=new THREE.Mesh(new THREE.PlaneGeometry(220,SLOPE_LEN,1,1), snowMat);
+    snow.rotation.x=-Math.PI/2 + Math.atan(PITCH); // tilt to match slope pitch
+    snow.receiveShadow=true; scene.add(snow);
+
+    // course edge banners (red flags marking the out-of-bounds margins)
+    const edgeMat=new THREE.MeshStandardMaterial({color:COL_RED, emissive:0x5a160d, emissiveIntensity:0.6, roughness:0.7});
+    const edges=[];
+    for(const side of [1,-1]){
+      for(let i=0;i<60;i++){
+        const m=new THREE.Mesh(new THREE.BoxGeometry(0.5,4.5,0.5), edgeMat);
+        m.castShadow=true; scene.add(m); edges.push({m,side,row:i});
+      }
+    }
+
+    // dashed center line (amber ticks) running down the fall line
+    const tickMat=new THREE.MeshStandardMaterial({color:COL_AMBER, emissive:0x4a3008, emissiveIntensity:0.5, roughness:0.6});
+    const ticks=[];
+    for(let i=0;i<40;i++){
+      const t=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.2,4.5), tickMat);
+      t.receiveShadow=false; scene.add(t); ticks.push({m:t,row:i});
+    }
+
+    // pine trees scattered outside the course (deterministic placement, recycled)
+    const trunkMat=new THREE.MeshStandardMaterial({color:0x4a3826, roughness:0.9});
+    const pineMat=new THREE.MeshStandardMaterial({color:0x2a4a32, roughness:0.85});
+    const pineMat2=new THREE.MeshStandardMaterial({color:0x223a28, roughness:0.85});
+    const trees=[];
+    for(let i=0;i<46;i++){
+      const g=new THREE.Group();
+      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.7,3,7), trunkMat);
+      trunk.position.y=1.5; trunk.castShadow=true; g.add(trunk);
+      const h=6+rnd()*5;
+      const cone=new THREE.Mesh(new THREE.ConeGeometry(3.2, h, 8), i%2?pineMat:pineMat2);
+      cone.position.y=3+h*0.42; cone.castShadow=true; g.add(cone);
+      const cap=new THREE.Mesh(new THREE.ConeGeometry(2.2, h*0.6, 8), i%2?pineMat2:pineMat);
+      cap.position.y=3+h*0.78; cap.castShadow=true; g.add(cap);
+      scene.add(g);
+      trees.push({g, side: rnd()<0.5?1:-1, lane: COURSE_HALF+10+rnd()*70, z0: rnd()*SLOPE_LEN});
+    }
+
+    // ---------- gates: pairs of poles, skier must pass between them ----------
+    const GATE_SPACING=34;     // distance in Z between successive gates
+    const GATE_START=40;       // runway before the first gate
+    const NUM_GATES=14;        // pooled gate objects, recycled forward
+    const POLE_H=5.5;
+    const gates=[];
+    function makePole(red){
+      const g=new THREE.Group();
+      const mat=new THREE.MeshStandardMaterial({
+        color: red?COL_RED:0x4ea3d8,
+        emissive: red?0x4a1006:0x0e2c3c, emissiveIntensity:0.7, roughness:0.5});
+      const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.35,POLE_H,10), mat);
+      pole.position.y=POLE_H/2; pole.castShadow=true; g.add(pole);
+      // little flag panel near the top
+      const flag=new THREE.Mesh(new THREE.PlaneGeometry(2.6,1.6),
+        new THREE.MeshStandardMaterial({color: red?COL_RED:0x4ea3d8, side:THREE.DoubleSide,
+          emissive: red?0x6a1a0c:0x123446, emissiveIntensity:0.8, roughness:0.6}));
+      flag.position.set(1.3, POLE_H-1.1, 0); g.add(flag);
+      g.userData.mat=mat; g.userData.flag=flag.material;
+      return g;
+    }
+    for(let i=0;i<NUM_GATES;i++){
+      const red = (i%2===0);
+      const left=makePole(red), right=makePole(red);
+      scene.add(left); scene.add(right);
+      gates.push({left, right, red, idx:i, cx:0, half:0, z:0, passed:false, missed:false, scored:false});
+    }
+
+    // ---------- skier (player) ----------
+    const skier=new THREE.Group();
+    // skis
+    const skiMat=new THREE.MeshStandardMaterial({color:COL_RED, metalness:0.3, roughness:0.4});
+    for(const sx of [-0.7,0.7]){
+      const ski=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.18,3.4), skiMat);
+      ski.position.set(sx,-0.05,0.2); ski.castShadow=true; skier.add(ski);
+    }
+    // boots/legs
+    const legMat=new THREE.MeshStandardMaterial({color:0x1b1410, roughness:0.7});
+    for(const sx of [-0.7,0.7]){
+      const leg=new THREE.Mesh(new THREE.BoxGeometry(0.7,1.4,0.8), legMat);
+      leg.position.set(sx,0.85,0); leg.castShadow=true; skier.add(leg);
+    }
+    // torso
+    const torso=new THREE.Mesh(new THREE.BoxGeometry(1.9,1.7,1.1),
+      new THREE.MeshStandardMaterial({color:COL_AMBER, metalness:0.2, roughness:0.5}));
+    torso.position.y=2.3; torso.castShadow=true; skier.add(torso);
+    // backpack racing bib detail
+    const bib=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.0,0.2),
+      new THREE.MeshStandardMaterial({color:COL_BONE, emissive:0x2a2620, emissiveIntensity:0.3, roughness:0.5}));
+    bib.position.set(0,2.4,0.58); skier.add(bib);
+    // head/helmet
+    const head=new THREE.Mesh(new THREE.SphereGeometry(0.62,14,12),
+      new THREE.MeshStandardMaterial({color:0x100c09, metalness:0.4, roughness:0.3}));
+    head.position.y=3.5; head.castShadow=true; skier.add(head);
+    // goggles
+    const gog=new THREE.Mesh(new THREE.BoxGeometry(1.05,0.34,0.2),
+      new THREE.MeshStandardMaterial({color:COL_AMBER, emissive:COL_AMBER, emissiveIntensity:1.2}));
+    gog.position.set(0,3.55,0.5); skier.add(gog);
+    scene.add(skier);
+
+    // ---------- snow spray particles ----------
+    const sprays=[]; const sprayGeo=new THREE.SphereGeometry(0.28,6,6);
+    const sprayMat=new THREE.MeshStandardMaterial({color:COL_BONE, emissive:0x3a342a, emissiveIntensity:0.4, roughness:0.9});
+    for(let i=0;i<60;i++){
+      const s=new THREE.Mesh(sprayGeo, sprayMat.clone());
+      s.visible=false; scene.add(s); sprays.push({m:s,vx:0,vy:0,vz:0,life:0});
+    }
+    function spray(x,y,z,col,n){ let made=0;
+      for(const p of sprays){ if(p.life>0) continue;
+        p.m.position.set(x+(rnd()-0.5)*1.2,y,z+(rnd()-0.5)*1.2);
+        if(col){ p.m.material.color.set(col); p.m.material.emissive.set(col); }
+        else { p.m.material.color.set(COL_SNOW); p.m.material.emissive.set(0x3a342a); }
+        p.m.visible=true; p.vx=(rnd()-0.5)*0.9; p.vy=rnd()*0.7+0.2; p.vz=(rnd()-0.5)*0.9+0.4; p.life=1;
+        if(++made>=(n||10)) break; }
+    }
+
+    // ---------- state ----------
+    const $=(id)=>document.getElementById(id);
+    let skierX=0, skierVX=0;          // lateral position + velocity
+    let progress=0;                    // distance travelled down the slope (Z)
+    let speed=0;                       // forward speed (units/sec along Z)
+    let steer=0;                       // -1..1 from drag
+    const input={left:false,right:false};
+    let gatesCleared, gatesMissed, timeLeft, running, paused, score, lean;
+    let best=+(localStorage.getItem(BEST_KEY)||0);
+    $('best').textContent=best;
+
+    // place gate i at its course position (cx,half,z) deterministically
+    function layoutGate(g, ordinal){
+      g.idx=ordinal;
+      g.red=(ordinal%2===0);
+      // center weaves left/right; gap narrows as you go for difficulty
+      const t=ordinal;
+      const cx=Math.sin(t*0.9)*COURSE_HALF*0.62 + Math.sin(t*0.37)*COURSE_HALF*0.22;
+      const half=Math.max(6.5, 13 - ordinal*0.06);   // half gate-width shrinks
+      // first gate sits a runway ahead so the start line isn't auto-triggered
+      g.cx=cx; g.half=half; g.z=GATE_START + ordinal*GATE_SPACING;
+      g.passed=false; g.missed=false; g.scored=false;
+      // recolor poles
+      const colMat = g.red?COL_RED:0x4ea3d8;
+      const colEm  = g.red?0x4a1006:0x0e2c3c;
+      g.left.userData.mat.color.set(colMat); g.left.userData.mat.emissive.set(colEm);
+      g.left.userData.flag.color.set(colMat); g.left.userData.flag.emissive.set(g.red?0x6a1a0c:0x123446);
+      g.right.userData.mat.color.set(colMat); g.right.userData.mat.emissive.set(colEm);
+      g.right.userData.flag.color.set(colMat); g.right.userData.flag.emissive.set(g.red?0x6a1a0c:0x123446);
+    }
+
+    function reset(){
+      seed=20260613;
+      skierX=0; skierVX=0; progress=0; speed=20; steer=0; lean=0;
+      input.left=input.right=false;
+      gatesCleared=0; gatesMissed=0; timeLeft=30; running=true; paused=false; score=0;
+      for(let i=0;i<gates.length;i++) layoutGate(gates[i], i);
+      sprays.forEach(p=>{p.m.visible=false;p.life=0;});
+      $('gates').textContent=0;
+      $('time').textContent=timeLeft.toFixed(1);
+      $('overTitle').textContent='Run over!';
+      $('over').classList.remove('gx-show');
+      $('flash').classList.remove('show');
+      flash._until=0;
+    }
+
+    function flash(msg,col){
+      const f=$('flash'); f.textContent=msg; f.style.color=col||'#e8a23a';
+      f.classList.add('show'); flash._until=tNow+0.9;
+    }
+    flash._until=0;
+
+    function end(){
+      running=false;
+      score=Math.round(gatesCleared*120 + Math.max(0,timeLeft)*15 - gatesMissed*40);
+      if(score<0) score=0;
+      const isNew = score>best;
+      if(isNew){ best=score; localStorage.setItem(BEST_KEY,best); $('best').textContent=best; }
+      $('finalGates').textContent=gatesCleared;
+      $('finalMissed').textContent=gatesMissed;
+      $('finalScore').textContent=score;
+      $('finalBest').textContent=best;
+      $('newBest').textContent = isNew ? 'New best!' : '';
+      $('over').classList.add('gx-show');
+    }
+
+    // ---------- input: drag to carve (touch-first) ----------
+    onDrag(renderer.domElement,{
+      move:({dx})=>{ if(running&&!paused){ steer=Math.max(-1,Math.min(1,steer+dx*0.018)); } },
+      end:()=>{ steer*=0.35; }
+    });
+    renderer.domElement.addEventListener('pointerdown',(e)=>{
+      if(!running||paused) return;
+      const half=innerWidth/2;
+      steer=Math.max(-1,Math.min(1, steer + (e.clientX<half?-0.4:0.4)));
+    });
+
+    // touch pads
+    function bindPad(id,on){ const el=$(id);
+      const set=(v)=>e=>{ e.preventDefault(); on(v); };
+      el.addEventListener('pointerdown',set(true));
+      el.addEventListener('pointerup',set(false));
+      el.addEventListener('pointercancel',set(false));
+      el.addEventListener('pointerleave',set(false));
+    }
+    bindPad('padL',v=>input.left=v);
+    bindPad('padR',v=>input.right=v);
+
+    // ---------- keyboard ----------
+    const KEYS=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','A','d','D','w','W','s','S',' ','Enter','r','R','p','P']);
+    addEventListener('keydown',(e)=>{
+      if(KEYS.has(e.key)) e.preventDefault();
+      switch(e.key){
+        case 'ArrowLeft': case 'a': case 'A': input.left=true; break;
+        case 'ArrowRight': case 'd': case 'D': input.right=true; break;
+        case ' ': case 'Enter': if(!running){ reset(); } break;
+        case 'r': case 'R': reset(); break;
+        case 'p': case 'P': if(running){ paused=!paused;
+          if(paused){ $('overTitle').textContent='Paused'; $('finalGates').textContent=gatesCleared;
+            $('finalMissed').textContent=gatesMissed; $('finalScore').textContent='—'; $('finalBest').textContent=best;
+            $('newBest').textContent=''; $('over').classList.add('gx-show'); }
+          else { $('over').classList.remove('gx-show'); } }
+          break;
+      }
+    });
+    addEventListener('keyup',(e)=>{
+      switch(e.key){
+        case 'ArrowLeft': case 'a': case 'A': input.left=false; break;
+        case 'ArrowRight': case 'd': case 'D': input.right=false; break;
+      }
+    });
+    $('again').onclick=reset;
+
+    // ---------- update ----------
+    function update(dt){
+      // steering: drag + held keys/pads
+      const keyTurn=(input.left?-1:0)+(input.right?1:0);
+      const turn=Math.max(-1,Math.min(1, steer + keyTurn));
+      lean += (turn - lean)*Math.min(1,dt*8);
+
+      // lateral motion (carve). faster forward = more lateral authority
+      const carve=42;
+      skierVX += turn*carve*dt;
+      skierVX *= Math.pow(0.0006, dt);   // strong damping for crisp control
+      skierX += skierVX*dt;
+      // soft walls at course edge
+      if(skierX> COURSE_HALF){ skierX=COURSE_HALF; skierVX*=-0.3; }
+      if(skierX< -COURSE_HALF){ skierX=-COURSE_HALF; skierVX*=-0.3; }
+
+      // forward speed: accelerates downhill, capped; widens slightly over time
+      const topSpeed=42;
+      speed += (topSpeed-speed)*0.4*dt;
+      progress += speed*dt;
+
+      // steer decays toward neutral so the skier straightens
+      steer*=Math.pow(0.02, dt);
+
+      // carving spray when turning hard
+      if(Math.abs(turn)>0.35 && rnd()<0.5){
+        spray(skierX-turn*0.8, groundY(progress)+0.1, progress-1.5, null, 2);
+      }
+
+      // ----- gate checks: when skier crosses a gate's Z plane -----
+      for(const g of gates){
+        if(!g.passed && g.z <= progress){
+          g.passed=true;
+          const through = Math.abs(skierX - g.cx) <= g.half;
+          if(through){
+            gatesCleared++; g.scored=true;
+            timeLeft=Math.min(timeLeft+1.2, 45);   // small reward
+            spray(g.cx, groundY(g.z)+2.5, g.z, COL_AMBER, 14);
+            $('gates').textContent=gatesCleared;
+            if(gatesCleared%5===0) flash('+'+gatesCleared+' GATES','#e8a23a');
+          } else {
+            gatesMissed++; g.missed=true;
+            timeLeft=Math.max(0, timeLeft-2.5);     // miss penalty
+            spray(skierX, groundY(progress)+1.5, progress, COL_RED, 12);
+            flash('MISSED  -2.5s','#d8412b');
+          }
+        }
+      }
+
+      // recycle gates that are well behind to the far end of the queue
+      // keep them ordered ascending in z so checks stay simple
+      for(const g of gates){
+        if(progress - g.z > GATE_SPACING*2){
+          // find current max ordinal and place this gate after it
+          let maxOrd=-1; for(const h of gates) if(h.idx>maxOrd) maxOrd=h.idx;
+          layoutGate(g, maxOrd+1);
+        }
+      }
+
+      // timer
+      timeLeft-=dt;
+      if(timeLeft<=0){ timeLeft=0; $('time').textContent='0.0'; end(); return; }
+      $('time').textContent=timeLeft.toFixed(1);
+    }
+
+    // ---------- render world objects relative to skier ----------
+    function syncWorld(){
+      const py=groundY(progress);
+
+      // skier sits on slope; lean roll into the carve
+      skier.position.set(skierX, groundY(progress)+0.1, progress);
+      skier.rotation.z = -lean*0.5;
+      skier.rotation.x = -Math.atan(PITCH)*0.6 + Math.min(0.25, speed*0.002);
+
+      // slide the snow plane so its center tracks the skier down the slope
+      snow.position.set(0, groundY(progress+ SLOPE_LEN*0.0), progress+ SLOPE_LEN*0.30);
+
+      // gates: position poles in world from course data
+      for(const g of gates){
+        const gy=groundY(g.z);
+        const passed = g.passed;
+        g.left.position.set(g.cx - g.half, gy, g.z);
+        g.right.position.set(g.cx + g.half, gy, g.z);
+        // visual feedback: scored gates fade to bone, missed gates dim to red
+        const sc=1;
+        g.left.scale.setScalar(sc); g.right.scale.setScalar(sc);
+        const em = g.scored?1.4 : (g.missed?0.15 : 0.7);
+        g.left.userData.mat.emissiveIntensity=em;
+        g.right.userData.mat.emissiveIntensity=em;
+      }
+
+      // amber center ticks marching down the fall line
+      for(let i=0;i<ticks.length;i++){
+        const z = progress - 20 + i*8 - ((progress)% 8);
+        ticks[i].m.position.set(0, groundY(z)+0.05, z);
+      }
+
+      // red edge banners on both course boundaries
+      let ei=0;
+      for(const e of edges){
+        const z = progress - 30 + e.row*12 - ((progress)%12);
+        e.m.position.set(e.side*COURSE_HALF, groundY(z)+2.25, z);
+      }
+
+      // recycle pine trees to keep them around the skier
+      for(const tr of trees){
+        let z = ((tr.z0 + progress*0.0) ); // base
+        // map tree into a window ahead/behind by modulo on progress
+        z = tr.z0 - Math.floor((tr.z0 - (progress-60))/SLOPE_LEN)*SLOPE_LEN;
+        tr.g.position.set(tr.side*tr.lane, groundY(z), z);
+      }
+
+      accent.position.set(skierX, py+22, progress+8);
+    }
+
+    // ---------- render frame ----------
+    let tNow=0;
+    function frame(){
+      requestAnimationFrame(frame);
+      const dt=0.016; tNow+=dt;   // fixed step keeps determinism with seeded LCG
+      if(running&&!paused) update(dt);
+
+      if(flash._until && tNow>flash._until){ $('flash').classList.remove('show'); flash._until=0; }
+
+      syncWorld();
+
+      // chase camera behind & above the skier, looking down the slope
+      const camBack=22, camUp=11;
+      const tx=skierX*0.5;
+      const cy=groundY(progress)+camUp;
+      camera.position.x += (tx-camera.position.x)*0.12;
+      camera.position.y += (cy-camera.position.y)*0.12;
+      camera.position.z += ((progress-camBack)-camera.position.z)*0.18;
+      camera.lookAt(skierX*0.4, groundY(progress+30)+2.5, progress+30);
+
+      // animate sprays
+      for(const p of sprays){ if(p.life>0){ p.life-=0.03; p.vy-=0.035;
+        p.m.position.x+=p.vx; p.m.position.y+=p.vy; p.m.position.z+=p.vz;
+        p.m.scale.setScalar(Math.max(0.01,p.life)); if(p.life<=0) p.m.visible=false; } }
+
+      renderer.render(scene,camera);
+    }
+
+    function resize(){ renderer.setSize(innerWidth,innerHeight);
+      camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); }
+    addEventListener('resize',resize); resize();
+
+    reset();
+    // seat camera initially behind the skier
+    camera.position.set(0, groundY(0)+11, -22);
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

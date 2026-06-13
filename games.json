@@ -9,7 +9,12 @@
       "icon": "🏁",
       "color": "#f2c14e",
       "dims": "3D",
-      "tags": ["circuit", "checkpoints", "time-trial", "three.js"],
+      "tags": [
+        "circuit",
+        "checkpoints",
+        "time-trial",
+        "three.js"
+      ],
       "license": "MIT",
       "credit": "Gamf original"
     },
@@ -20,7 +25,11 @@
       "icon": "🏁",
       "color": "#f2c14e",
       "dims": "2D",
-      "tags": ["drift", "time-trial", "coins"],
+      "tags": [
+        "drift",
+        "time-trial",
+        "coins"
+      ],
       "license": "MIT",
       "credit": "Gamf original"
     },
@@ -31,7 +40,11 @@
       "icon": "🏎️",
       "color": "#f2c14e",
       "dims": "3D",
-      "tags": ["steer", "dodge", "endless"],
+      "tags": [
+        "steer",
+        "dodge",
+        "endless"
+      ],
       "license": "MIT",
       "credit": "Gamf sample"
     },
@@ -42,7 +55,76 @@
       "icon": "🚙",
       "color": "#f2c14e",
       "dims": "3D",
-      "tags": ["rally", "checkpoints", "drift", "three.js"],
+      "tags": [
+        "rally",
+        "checkpoints",
+        "drift",
+        "three.js"
+      ],
+      "license": "MIT",
+      "credit": "Gamf original"
+    },
+    {
+      "slug": "traffic",
+      "title": "Traffic",
+      "path": "games/traffic/",
+      "icon": "🚗",
+      "color": "#f2c14e",
+      "dims": "3D",
+      "tags": [
+        "dodge",
+        "lanes",
+        "endless",
+        "near-miss"
+      ],
+      "license": "MIT",
+      "credit": "Gamf original"
+    },
+    {
+      "slug": "hill-climb",
+      "title": "Hill Climb",
+      "path": "games/hill-climb/",
+      "icon": "🏔️",
+      "color": "#f2c14e",
+      "dims": "2D",
+      "tags": [
+        "physics",
+        "driving",
+        "distance",
+        "endless"
+      ],
+      "license": "MIT",
+      "credit": "Gamf original"
+    },
+    {
+      "slug": "coin-rush",
+      "title": "Coin Rush",
+      "path": "games/coin-rush/",
+      "icon": "🪙",
+      "color": "#f2c14e",
+      "dims": "2D",
+      "tags": [
+        "coins",
+        "time attack",
+        "top-down",
+        "arcade"
+      ],
+      "license": "MIT",
+      "credit": "Gamf original"
+    },
+    {
+      "slug": "slalom",
+      "title": "Slalom",
+      "path": "games/slalom/",
+      "icon": "⛷️",
+      "color": "#f2c14e",
+      "dims": "3D",
+      "tags": [
+        "downhill",
+        "slalom",
+        "skiing",
+        "time-attack"
+      ],
       "license": "MIT",
       "credit": "Gamf original"
     }

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#15110e">
+  <title>Coin Rush — Gamf</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../gamf.css">
+  <script type="importmap">
+  { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+  </script>
+  <style>
+    body{ --gx-accent:#f2c14e; margin:0; height:100%; overflow:hidden;
+      touch-action:none; -webkit-user-select:none; user-select:none; }
+    html,body{ height:100%; }
+    canvas{display:block;width:100%;height:100%;touch-action:none}
+    /* on-screen touch pads */
+    .pads{position:fixed;inset:0;z-index:5;pointer-events:none}
+    .pad{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 78px);width:78px;height:78px;border-radius:50%;
+      display:grid;place-items:center;pointer-events:auto;color:var(--gx-text);
+      background:color-mix(in srgb, var(--gx-amber) 16%, transparent);
+      border:1px solid color-mix(in srgb, var(--gx-amber) 45%, var(--gx-line));
+      backdrop-filter:blur(6px);transition:transform .1s, background .12s}
+    .pad:active{transform:scale(.92);background:color-mix(in srgb, var(--gx-amber) 34%, transparent)}
+    .pad svg{width:30px;height:30px}
+    #padL{left:calc(env(safe-area-inset-left) + 18px)} #padR{left:calc(env(safe-area-inset-left) + 108px)}
+    #padGas{right:calc(env(safe-area-inset-right) + 18px);color:var(--gx-red);
+      background:color-mix(in srgb, var(--gx-red) 16%, transparent);
+      border-color:color-mix(in srgb, var(--gx-red) 45%, var(--gx-line))}
+    #padGas:active{background:color-mix(in srgb, var(--gx-red) 34%, transparent)}
+  </style>
+</head>
+<body class="gx">
+  <script src="../../gamf-icons.js"></script>
+  <div class="gx-hud">
+    <a class="gx-hud__back" href="../../"><svg class="gx-ico"><use href="#i-back"/></svg> Racing</a>
+    <span class="gx-hud__spacer"></span>
+    <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-coin"/></svg> <b id="score">0</b></span>
+    <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-pause"/></svg> <b id="time">45.0</b></span>
+    <span class="gx-pill gx-pill--best"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-trophy"/></svg> Best <b id="best">0</b></span>
+  </div>
+  <div class="gx-hint">
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-coin"/></svg> drag to steer</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-left"/></svg><svg class="gx-ico"><use href="#i-right"/></svg> arrows steer</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-bolt"/></svg> Space boost</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-pause"/></svg> P pause</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-restart"/></svg> R restart</span>
+  </div>
+  <div class="pads">
+    <div class="pad" id="padL"><svg class="gx-ico"><use href="#i-left"/></svg></div>
+    <div class="pad" id="padR"><svg class="gx-ico"><use href="#i-right"/></svg></div>
+    <div class="pad" id="padGas"><svg class="gx-ico"><use href="#i-up"/></svg></div>
+  </div>
+  <div class="gx-modal" id="over">
+    <div class="gx-modal__card">
+      <h2 class="gx-modal__title" id="overTitle">Time's up!</h2>
+      <div class="gx-modal__row">Score <b id="finalScore">0</b></div>
+      <div class="gx-modal__row">Coins <b id="finalCoins">0</b></div>
+      <div class="gx-modal__row">Best <b id="finalBest">0</b></div>
+      <div class="gx-modal__new" id="newBest"></div>
+      <button class="gx-btn gx-btn--primary" id="again"><svg class="gx-ico"><use href="#i-restart"/></svg> Race again</button>
+    </div>
+  </div>
+  <canvas id="c"></canvas>
+  <script type="module">
+    import { onDrag } from './touch.js';
+
+    const SLUG='coin-rush', BEST_KEY='gamf-racing-'+SLUG+'-best';
+    const canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
+    const $=(id)=>document.getElementById(id);
+    let W=0,H=0,DPR=1;
+    function resize(){ DPR=Math.min(devicePixelRatio||1,2); W=innerWidth; H=innerHeight;
+      canvas.width=W*DPR; canvas.height=H*DPR; canvas.style.width=W+'px'; canvas.style.height=H+'px';
+      ctx.setTransform(DPR,0,0,DPR,0,0); }
+    addEventListener('resize',resize); resize();
+
+    // ---- seeded LCG (no nondeterministic random / clock APIs) ----
+    let seed=20260613;
+    const rnd=()=> (seed=(seed*1103515245+12345)&0x7fffffff)/0x7fffffff;
+
+    // ---- world: a looping squircle track defined by a centerline polygon ----
+    const trackPts=[]; (function(){
+      const rx=420, ry=270, n=72;
+      for(let i=0;i<n;i++){ const a=i/n*Math.PI*2;
+        const cx=Math.cos(a), sy=Math.sin(a);
+        const x=Math.sign(cx)*Math.pow(Math.abs(cx),0.70)*rx;
+        const y=Math.sign(sy)*Math.pow(Math.abs(sy),0.70)*ry;
+        trackPts.push({x,y});
+      }
+    })();
+    const TRACK_W=98; // half-width of tarmac
+
+    // ---- coins placed along the centerline with random lateral offset ----
+    let coins=[];
+    function trackNormal(i){
+      const p=trackPts[(i-1+trackPts.length)%trackPts.length];
+      const q=trackPts[(i+1)%trackPts.length];
+      const tx=q.x-p.x, ty=q.y-p.y; const l=Math.hypot(tx,ty)||1;
+      return {nx:-ty/l, ny:tx/l};
+    }
+    function placeCoins(){ coins=[]; const every=3;
+      for(let i=0;i<trackPts.length;i+=every){
+        const p=trackPts[i]; const n=trackNormal(i);
+        const off=(rnd()*2-1)*TRACK_W*0.55;
+        coins.push({x:p.x+n.nx*off, y:p.y+n.ny*off, got:false, phase:rnd()*6.28, sparkle:0});
+      }
+    }
+    // a single roaming gem worth bonus points + time
+    const gem={x:0,y:0,alive:false,phase:0,timer:0};
+    function spawnGem(){ const i=Math.floor(rnd()*trackPts.length); const p=trackPts[i];
+      const n=trackNormal(i); const off=(rnd()*2-1)*TRACK_W*0.4;
+      gem.x=p.x+n.nx*off; gem.y=p.y+n.ny*off; gem.alive=true; gem.phase=0; gem.timer=6; }
+
+    // ---- car ----
+    const car={x:0,y:0,a:0,vx:0,vy:0,speed:0,drift:0};
+    // particles
+    const parts=[];
+    function spawnPart(x,y,col,n,spd){ for(let i=0;i<n;i++){ const a=rnd()*6.28,s=rnd()*spd;
+      parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,col,r:2+rnd()*3}); } }
+    // floating "+N" score popups
+    const pops=[];
+    function popText(x,y,txt,col){ pops.push({x,y,txt,col,life:1}); }
+
+    let coinsGot,timeLeft,running,paused,score,best,combo,comboTimer,gemTimer;
+    best=+(localStorage.getItem(BEST_KEY)||0);
+    $('best').textContent=best;
+
+    function reset(){ seed=20260613; placeCoins();
+      const s0=trackPts[0], s1=trackPts[1];
+      car.x=s0.x; car.y=s0.y; car.a=Math.atan2(s1.y-s0.y,s1.x-s0.x);
+      car.vx=0; car.vy=0; car.speed=0; car.drift=0;
+      coinsGot=0; timeLeft=45; running=true; paused=false; score=0;
+      combo=0; comboTimer=0; gem.alive=false; gemTimer=8;
+      parts.length=0; pops.length=0; steer=0;
+      $('score').textContent=0;
+      $('time').textContent=timeLeft.toFixed(1);
+      $('over').classList.remove('gx-show');
+    }
+
+    // ---- input ----
+    const input={left:false,right:false,gas:true,boost:false};
+    let steer=0; // -1..1 from drag
+    onDrag(canvas,{
+      move:({dx})=>{ if(running&&!paused){ steer=Math.max(-1,Math.min(1,steer+dx*0.018)); } },
+      end:()=>{ steer*=0.3; }
+    });
+
+    function bindPad(id,on){ const el=$(id);
+      const set=(v)=>e=>{ e.preventDefault(); on(v); };
+      el.addEventListener('pointerdown',set(true)); el.addEventListener('pointerup',set(false));
+      el.addEventListener('pointercancel',set(false)); el.addEventListener('pointerleave',set(false)); }
+    bindPad('padL',v=>input.left=v); bindPad('padR',v=>input.right=v);
+    bindPad('padGas',v=>input.boost=v);
+
+    const KEYS=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','A','d','D','w','W','s','S',' ','Enter','r','R','p','P']);
+    addEventListener('keydown',(e)=>{
+      if(e.repeat){ if(KEYS.has(e.key)) e.preventDefault(); return; }
+      if(KEYS.has(e.key)) e.preventDefault();
+      switch(e.key){
+        case 'ArrowLeft': case 'a': case 'A': input.left=true; break;
+        case 'ArrowRight': case 'd': case 'D': input.right=true; break;
+        case 'ArrowUp': case 'w': case 'W': input.gas=true; break;
+        case 'ArrowDown': case 's': case 'S': input.gas=false; break;
+        case ' ': case 'Enter': if(!running){ reset(); } else input.boost=true; break;
+        case 'r': case 'R': reset(); break;
+        case 'p': case 'P': if(running) paused=!paused; break;
+      }
+    });
+    addEventListener('keyup',(e)=>{
+      switch(e.key){
+        case 'ArrowLeft': case 'a': case 'A': input.left=false; break;
+        case 'ArrowRight': case 'd': case 'D': input.right=false; break;
+        case 'ArrowUp': case 'w': case 'W': input.gas=true; break;
+        case ' ': case 'Enter': input.boost=false; break;
+      }
+    });
+    $('again').onclick=reset;
+
+    // ---- geometry helpers ----
+    function nearestTrackDist(x,y){ let bd=1e9;
+      for(let i=0;i<trackPts.length;i++){ const p=trackPts[i], q=trackPts[(i+1)%trackPts.length];
+        const d=segDist(x,y,p.x,p.y,q.x,q.y); if(d<bd) bd=d; }
+      return bd; }
+    function segDist(px,py,x1,y1,x2,y2){ const dx=x2-x1,dy=y2-y1; const l2=dx*dx+dy*dy||1;
+      let t=((px-x1)*dx+(py-y1)*dy)/l2; t=Math.max(0,Math.min(1,t));
+      const cx=x1+t*dx, cy=y1+t*dy; return Math.hypot(px-cx,py-cy); }
+
+    function end(){ running=false;
+      if(score>best){ best=score; localStorage.setItem(BEST_KEY,best); $('best').textContent=best;
+        $('newBest').textContent='New best!'; } else { $('newBest').textContent=''; }
+      $('overTitle').textContent="Time's up!";
+      $('finalScore').textContent=score;
+      $('finalCoins').textContent=coinsGot;
+      $('finalBest').textContent=best;
+      $('over').classList.add('gx-show'); }
+
+    // ---- update ----
+    let last=performance.now();
+    function update(dt){
+      // steering: keys nudge the drag steer for unified handling
+      if(input.left) steer=Math.max(-1,steer-0.10*dt*60);
+      if(input.right) steer=Math.min(1,steer+0.10*dt*60);
+      if(!input.left&&!input.right) steer*=Math.pow(0.86,dt*60); // self-center
+
+      const accel = input.gas ? (input.boost?0.34:0.20) : -0.14;
+      const maxV = input.boost?9.2:6.6;
+      car.speed += accel*dt*60; car.speed=Math.max(0,Math.min(maxV,car.speed));
+      const grip=0.055*Math.min(1,car.speed/3);
+      car.a += steer*grip*dt*60;
+
+      const fx=Math.cos(car.a), fy=Math.sin(car.a);
+      const targetVx=fx*car.speed, targetVy=fy*car.speed;
+      const slide = 0.20*Math.abs(steer)*Math.min(1,car.speed/4);
+      car.drift += (slide-car.drift)*0.1;
+      car.vx += (targetVx-car.vx)*(0.16-car.drift*0.1);
+      car.vy += (targetVy-car.vy)*(0.16-car.drift*0.1);
+      car.x += car.vx*dt*60*0.20; car.y += car.vy*dt*60*0.20;
+
+      // off-track friction (grass)
+      const d=nearestTrackDist(car.x,car.y);
+      if(d>TRACK_W){ car.speed*=Math.pow(0.86,dt*60); car.vx*=0.9; car.vy*=0.9;
+        if(car.speed>1 && rnd()<0.5) spawnPart(car.x,car.y,'#5a4632',2,2); }
+
+      // boost trail + drift smoke
+      if(input.boost && car.speed>2){ const bx=car.x-fx*16, by=car.y-fy*16;
+        spawnPart(bx,by,'rgba(216,65,43,0.55)',1,1.4); }
+      if(car.drift>0.06 && car.speed>2){ const bx=car.x-fx*16, by=car.y-fy*16;
+        spawnPart(bx,by,'rgba(220,205,180,0.4)',1,1); }
+
+      // combo timer decay
+      if(comboTimer>0){ comboTimer-=dt; if(comboTimer<=0) combo=0; }
+
+      // coins
+      for(const c of coins){ if(c.got){ continue; } c.phase+=dt*4;
+        if(Math.hypot(car.x-c.x,car.y-c.y)<28){ c.got=true; coinsGot++;
+          combo=Math.min(combo+1,9); comboTimer=2.2;
+          const val=10*combo;
+          score+=val; popText(c.x,c.y,'+'+val,'#e8a23a');
+          $('score').textContent=score;
+          spawnPart(c.x,c.y,'#e8a23a',14,4); timeLeft=Math.min(timeLeft+0.6,60);
+          // respawn coins when all collected for an endless rush
+          if(coins.every(k=>k.got)){
+            for(const k of coins){ k.got=false; }
+            timeLeft=Math.min(timeLeft+4,60); popText(car.x,car.y-26,'LAP +4s','#d8412b');
+          }
+        }
+      }
+
+      // roaming bonus gem
+      gemTimer-=dt;
+      if(!gem.alive && gemTimer<=0){ spawnGem(); }
+      if(gem.alive){ gem.phase+=dt*3; gem.timer-=dt;
+        if(gem.timer<=0){ gem.alive=false; gemTimer=6; }
+        else if(Math.hypot(car.x-gem.x,car.y-gem.y)<32){ gem.alive=false; gemTimer=7;
+          const val=100; score+=val; popText(gem.x,gem.y,'+'+val+'!','#d8412b');
+          $('score').textContent=score; spawnPart(gem.x,gem.y,'#d8412b',22,5);
+          timeLeft=Math.min(timeLeft+3,60);
+        }
+      }
+
+      // timer
+      timeLeft-=dt; if(timeLeft<=0){ timeLeft=0; end(); }
+      $('time').textContent=timeLeft.toFixed(1);
+
+      // particles + pops
+      for(let i=parts.length-1;i>=0;i--){ const p=parts[i]; p.x+=p.vx; p.y+=p.vy; p.vx*=0.92; p.vy*=0.92;
+        p.life-=dt*1.6; if(p.life<=0) parts.splice(i,1); }
+      for(let i=pops.length-1;i>=0;i--){ const p=pops[i]; p.y-=dt*34; p.life-=dt*1.1;
+        if(p.life<=0) pops.splice(i,1); }
+    }
+
+    // ---- render ----
+    let bgT=0;
+    function pathTrack(){ ctx.moveTo(trackPts[0].x,trackPts[0].y);
+      for(let i=1;i<trackPts.length;i++) ctx.lineTo(trackPts[i].x,trackPts[i].y); }
+    function roundRect(x,y,w,h,r){ ctx.beginPath();
+      ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+      ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); ctx.fill(); }
+
+    function draw(){
+      bgT+=0.004;
+      // warm near-black background (arcade palette)
+      const g=ctx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,'#1a140f'); g.addColorStop(1,'#100c09');
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      // subtle drifting grid
+      ctx.save(); ctx.globalAlpha=0.05; ctx.strokeStyle='#e8a23a'; ctx.lineWidth=1;
+      const gs=48, off=(bgT*36)%gs;
+      for(let x=-off;x<W;x+=gs){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
+      for(let y=-off;y<H;y+=gs){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+      ctx.restore();
+
+      // camera follows car
+      ctx.save();
+      ctx.translate(W/2,H/2);
+      ctx.translate(-car.x,-car.y);
+
+      ctx.lineJoin='round'; ctx.lineCap='round';
+      // tarmac band
+      ctx.beginPath(); pathTrack(); ctx.closePath();
+      ctx.strokeStyle='#241a13'; ctx.lineWidth=TRACK_W*2; ctx.stroke();
+      // amber edge glow
+      ctx.save(); ctx.shadowBlur=16; ctx.shadowColor='#e8a23a';
+      ctx.beginPath(); pathTrack(); ctx.closePath();
+      ctx.strokeStyle='rgba(232,162,58,0.18)'; ctx.lineWidth=TRACK_W*2; ctx.stroke();
+      ctx.restore();
+      // center dashed racing line
+      ctx.save(); ctx.shadowBlur=8; ctx.shadowColor='#d8412b';
+      ctx.setLineDash([16,20]); ctx.lineDashOffset=-bgT*140;
+      ctx.beginPath(); pathTrack(); ctx.closePath();
+      ctx.strokeStyle='rgba(216,65,43,0.5)'; ctx.lineWidth=3; ctx.stroke();
+      ctx.setLineDash([]); ctx.restore();
+
+      // coins
+      for(const c of coins){ if(c.got) continue;
+        const r=12+Math.sin(c.phase)*2;
+        ctx.save(); ctx.shadowBlur=16; ctx.shadowColor='#e8a23a';
+        const cg=ctx.createRadialGradient(c.x,c.y,1,c.x,c.y,r);
+        cg.addColorStop(0,'#fbe6ad'); cg.addColorStop(1,'#e8a23a');
+        ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(c.x,c.y,r,0,6.28); ctx.fill();
+        ctx.shadowBlur=0; ctx.strokeStyle='#a86f1e'; ctx.lineWidth=1.5;
+        ctx.beginPath(); ctx.arc(c.x,c.y,r*0.55,0,6.28); ctx.stroke();
+        ctx.restore();
+      }
+
+      // bonus gem (diamond)
+      if(gem.alive){ const pulse=1+Math.sin(gem.phase)*0.18; const blink=gem.timer<2?(Math.sin(gem.phase*6)>0?1:0.35):1;
+        ctx.save(); ctx.translate(gem.x,gem.y); ctx.rotate(gem.phase*0.5); ctx.scale(pulse,pulse);
+        ctx.globalAlpha=blink; ctx.shadowBlur=20; ctx.shadowColor='#d8412b';
+        ctx.fillStyle='#d8412b'; ctx.beginPath();
+        ctx.moveTo(0,-14); ctx.lineTo(12,0); ctx.lineTo(0,14); ctx.lineTo(-12,0); ctx.closePath(); ctx.fill();
+        ctx.shadowBlur=0; ctx.fillStyle='#f4ede1'; ctx.beginPath();
+        ctx.moveTo(0,-7); ctx.lineTo(5,0); ctx.lineTo(0,7); ctx.lineTo(-5,0); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+
+      // particles
+      for(const p of parts){ ctx.globalAlpha=Math.max(0,p.life);
+        ctx.fillStyle=p.col; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*p.life,0,6.28); ctx.fill(); }
+      ctx.globalAlpha=1;
+
+      // score popups
+      ctx.textAlign='center'; ctx.font='700 16px "Space Mono", monospace';
+      for(const p of pops){ ctx.globalAlpha=Math.max(0,p.life);
+        ctx.fillStyle=p.col; ctx.fillText(p.txt,p.x,p.y); }
+      ctx.globalAlpha=1; ctx.textAlign='left';
+
+      // car
+      ctx.save();
+      ctx.translate(car.x,car.y); ctx.rotate(car.a);
+      ctx.fillStyle='rgba(0,0,0,0.45)'; roundRect(-15,-7,33,19,5);
+      ctx.shadowBlur=14; ctx.shadowColor='#d8412b';
+      const bg=ctx.createLinearGradient(-16,0,16,0); bg.addColorStop(0,'#e8553a'); bg.addColorStop(1,'#d8412b');
+      ctx.fillStyle=bg; roundRect(-16,-9,32,18,5);
+      ctx.shadowBlur=0;
+      ctx.fillStyle='#1b0f0c'; roundRect(-4,-6,12,12,3);
+      ctx.shadowBlur=10; ctx.shadowColor='#e8a23a'; ctx.fillStyle='#e8a23a'; roundRect(12,-7,3,14,2);
+      ctx.shadowBlur=0;
+      ctx.restore();
+
+      ctx.restore();
+
+      // combo readout
+      if(combo>1 && running && !paused){
+        ctx.save(); ctx.textAlign='center'; ctx.fillStyle='#e8a23a';
+        ctx.font='700 22px "Anton", system-ui';
+        ctx.fillText('x'+combo+' COMBO', W/2, 76);
+        ctx.restore();
+      }
+
+      // pause overlay
+      if(paused){ ctx.fillStyle='rgba(10,8,6,0.66)'; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle='#f4ede1'; ctx.textAlign='center';
+        ctx.font='400 34px "Anton", system-ui';
+        ctx.fillText('PAUSED', W/2, H/2-10);
+        ctx.font='400 14px "Space Mono", monospace'; ctx.fillStyle='#b3a48f';
+        ctx.fillText('PRESS P TO RESUME', W/2, H/2+18);
+        ctx.textAlign='left'; }
+    }
+
+    function loop(now){ requestAnimationFrame(loop);
+      let dt=(now-last)/1000; last=now; if(dt>0.05) dt=0.05;
+      if(running&&!paused) update(dt);
+      draw();
+    }
+    reset(); requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
