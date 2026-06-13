@@ -38,6 +38,7 @@
     <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-trophy"/></svg> Coins <b><span id="coins">0</span>/<span id="coinTotal">0</span></b></span>
     <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-pause"/></svg> <b id="time">20.0</b></span>
     <span class="gx-pill gx-pill--best"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-trophy"/></svg> Best <b id="best">0</b></span>
+    <button class="gx-help__open" id="gxHelpOpen" aria-label="How to play"><svg class="gx-ico"><use href="#i-info"/></svg></button>
   </div>
   <div class="gx-hint">
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-touch"/></svg> drag to steer</span>
@@ -56,7 +57,22 @@
       <h2 class="gx-modal__title" id="overTitle">Lap done!</h2>
       <div class="gx-modal__row">Score <b id="finalScore">0</b></div>
       <div class="gx-modal__row">Best <b id="finalBest">0</b></div>
+      <div class="gx-modal__new" id="finalNew"></div>
       <button class="gx-btn gx-btn--primary" id="again"><svg class="gx-ico"><use href="#i-restart"/></svg> Race again</button>
+    </div>
+  </div>
+  <div class="gx-modal" id="gxHelp">
+    <div class="gx-modal__card">
+      <div class="gx-modal__title">How to Play</div>
+      <p class="gx-help__obj">Drift around the circuit and scoop up every coin before the timer runs out.</p>
+      <ul class="gx-help__list">
+        <li><b>Drag / Arrows</b> <span>Steer the car</span></li>
+        <li><b>Swipe up / Space</b> <span>Boost</span></li>
+        <li><b>Gas pad / Up</b> <span>Accelerate</span></li>
+        <li><b>P</b> <span>Pause</span></li>
+        <li><b>R</b> <span>Restart</span></li>
+      </ul>
+      <button class="gx-btn gx-btn--primary" id="gxHelpClose">Got it</button>
     </div>
   </div>
   <canvas id="c"></canvas>
@@ -161,6 +177,18 @@
     });
     document.getElementById('again').onclick=reset;
 
+    // ---- how-to-play overlay ----
+    const SEEN_KEY='gamf-seen-racing-'+SLUG;
+    const helpEl=document.getElementById('gxHelp');
+    let pausedByHelp=false;
+    function showHelp(){ if(running && !paused){ paused=true; pausedByHelp=true; }
+      helpEl.classList.add('gx-show'); }
+    function hideHelp(){ helpEl.classList.remove('gx-show');
+      if(pausedByHelp){ paused=false; pausedByHelp=false; } }
+    document.getElementById('gxHelpOpen').onclick=showHelp;
+    document.getElementById('gxHelpClose').onclick=hideHelp;
+    helpEl.addEventListener('click',(e)=>{ if(e.target===helpEl) hideHelp(); });
+
     // ---- helpers ----
     function nearestTrackDist(x,y){ let best=1e9;
       for(let i=0;i<trackPts.length;i++){ const p=trackPts[i], q=trackPts[(i+1)%trackPts.length];
@@ -172,10 +200,12 @@
 
     function end(win){ running=false;
       score=Math.round(coinsGot*100 + (win? timeLeft*25 : 0));
-      if(score>best){ best=score; localStorage.setItem(BEST_KEY,best); document.getElementById('best').textContent=best; }
+      let isNew=false;
+      if(score>best){ best=score; isNew=true; localStorage.setItem(BEST_KEY,best); document.getElementById('best').textContent=best; }
       document.getElementById('overTitle').textContent = win? 'Circuit cleared!' : "Time's up!";
       document.getElementById('finalScore').textContent=score;
       document.getElementById('finalBest').textContent=best;
+      document.getElementById('finalNew').textContent = isNew? 'New best!' : '';
       document.getElementById('over').classList.add('gx-show'); }
 
     // ---- update ----
@@ -312,6 +342,7 @@
       draw();
     }
     reset(); requestAnimationFrame(loop);
+    if(!localStorage.getItem(SEEN_KEY)){ localStorage.setItem(SEEN_KEY,'1'); showHelp(); }
   </script>
 </body>
 </html>

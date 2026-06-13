@@ -47,6 +47,7 @@
     <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-flag"/></svg> Gates <b><span id="gates">0</span></b></span>
     <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-pause"/></svg> <b id="time">30.0</b></span>
     <span class="gx-pill gx-pill--best"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-trophy"/></svg> Best <b id="best">0</b></span>
+    <button class="gx-help__open" id="gxHelpOpen" aria-label="How to play"><svg class="gx-ico"><use href="#i-info"/></svg></button>
   </div>
 
   <!-- controls hint -->
@@ -75,6 +76,21 @@
       <div class="gx-modal__row">Best <b id="finalBest">0</b></div>
       <p class="gx-modal__new" id="newBest"></p>
       <button class="gx-btn gx-btn--primary" id="again"><svg class="gx-ico"><use href="#i-restart"/></svg> Race again</button>
+    </div>
+  </div>
+
+  <!-- how to play -->
+  <div class="gx-modal" id="gxHelp">
+    <div class="gx-modal__card">
+      <div class="gx-modal__title">How to play</div>
+      <p class="gx-help__obj">Carve through every gate before time runs out — pass between the matching pole pairs without missing.</p>
+      <ul class="gx-help__list">
+        <li><b>Drag / A D / ← →</b><span>Steer left &amp; right</span></li>
+        <li><b>Tap pads</b><span>Steer on touch</span></li>
+        <li><b>P</b><span>Pause</span></li>
+        <li><b>R</b><span>Restart</span></li>
+      </ul>
+      <button class="gx-btn gx-btn--primary" id="gxHelpClose">Got it</button>
     </div>
   </div>
 
@@ -334,12 +350,13 @@
     const KEYS=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','A','d','D','w','W','s','S',' ','Enter','r','R','p','P']);
     addEventListener('keydown',(e)=>{
       if(KEYS.has(e.key)) e.preventDefault();
+      const helpOpen = document.getElementById('gxHelp').classList.contains('gx-show');
       switch(e.key){
         case 'ArrowLeft': case 'a': case 'A': input.left=true; break;
         case 'ArrowRight': case 'd': case 'D': input.right=true; break;
         case ' ': case 'Enter': if(!running){ reset(); } break;
-        case 'r': case 'R': reset(); break;
-        case 'p': case 'P': if(running){ paused=!paused;
+        case 'r': case 'R': document.getElementById('gxHelp').classList.remove('gx-show'); reset(); break;
+        case 'p': case 'P': if(helpOpen) break; if(running){ paused=!paused;
           if(paused){ $('overTitle').textContent='Paused'; $('finalGates').textContent=gatesCleared;
             $('finalMissed').textContent=gatesMissed; $('finalScore').textContent='—'; $('finalBest').textContent=best;
             $('newBest').textContent=''; $('over').classList.add('gx-show'); }
@@ -354,6 +371,26 @@
       }
     });
     $('again').onclick=reset;
+
+    // ---------- how-to-play overlay ----------
+    const helpEl=$('gxHelp');
+    let helpWasPaused=false;
+    function openHelp(){
+      helpWasPaused=paused;
+      paused=true;                       // freeze gameplay while reading
+      helpEl.classList.add('gx-show');
+    }
+    function closeHelp(){
+      helpEl.classList.remove('gx-show');
+      if(running && !helpWasPaused) paused=false;   // resume unless it was already paused
+    }
+    $('gxHelpOpen').addEventListener('click',openHelp);
+    $('gxHelpClose').addEventListener('click',closeHelp);
+    helpEl.addEventListener('click',(e)=>{ if(e.target===helpEl) closeHelp(); });
+    if(!localStorage.getItem('gamf-seen-racing-slalom')){
+      openHelp();
+      localStorage.setItem('gamf-seen-racing-slalom','1');
+    }
 
     // ---------- update ----------
     function update(dt){

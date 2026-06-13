@@ -41,6 +41,7 @@
     <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-bolt"/></svg> Fuel <b id="fuel">100</b></span>
     <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-flag"/></svg> <b id="dist">0</b>m</span>
     <span class="gx-pill gx-pill--best"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-trophy"/></svg> Best <b id="best">0</b></span>
+    <button class="gx-help__open" id="gxHelpOpen" aria-label="How to play"><svg class="gx-ico"><use href="#i-info"/></svg></button>
   </div>
   <div class="gx-hint">
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-right"/></svg> hold gas</span>
@@ -60,6 +61,21 @@
       <div class="gx-modal__row">Best <b id="finalBest">0</b>m</div>
       <div class="gx-modal__new" id="newBest"></div>
       <button class="gx-btn gx-btn--primary" id="again"><svg class="gx-ico"><use href="#i-restart"/></svg> Drive again</button>
+    </div>
+  </div>
+  <div class="gx-modal" id="gxHelp">
+    <div class="gx-modal__card">
+      <div class="gx-modal__title">How to Play</div>
+      <p class="gx-help__obj">Drive as far as you can up and down the hills without flipping over or running out of fuel.</p>
+      <ul class="gx-help__list">
+        <li><b>Right / Up / Gas</b><span>Accelerate forward</span></li>
+        <li><b>Left / Down / Brake</b><span>Brake &amp; reverse</span></li>
+        <li><b>Grab cans</b><span>Refuel</span></li>
+        <li><b>Space / Enter</b><span>Gas (or restart when wiped out)</span></li>
+        <li><b>P</b><span>Pause</span></li>
+        <li><b>R</b><span>Restart</span></li>
+      </ul>
+      <button class="gx-btn gx-btn--primary" id="gxHelpClose">Got it</button>
     </div>
   </div>
   <canvas id="c"></canvas>
@@ -463,6 +479,23 @@
       draw();
     }
     reset(); requestAnimationFrame(loop);
+
+    // ---- how-to-play overlay ----
+    const SEEN_KEY='gamf-seen-racing-'+SLUG;
+    const helpEl=document.getElementById('gxHelp');
+    let pausedByHelp=false;
+    function showHelp(){
+      if(running && !paused){ paused=true; pausedByHelp=true; }
+      helpEl.classList.add('gx-show');
+    }
+    function hideHelp(){
+      helpEl.classList.remove('gx-show');
+      if(pausedByHelp){ pausedByHelp=false; if(running && !dead) paused=false; }
+    }
+    document.getElementById('gxHelpOpen').addEventListener('click',showHelp);
+    document.getElementById('gxHelpClose').addEventListener('click',hideHelp);
+    helpEl.addEventListener('click',(e)=>{ if(e.target===helpEl) hideHelp(); });
+    if(!localStorage.getItem(SEEN_KEY)){ showHelp(); localStorage.setItem(SEEN_KEY,'1'); }
   </script>
 </body>
 </html>

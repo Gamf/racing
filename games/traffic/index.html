@@ -58,6 +58,7 @@
     <span class="gx-hud__spacer"></span>
     <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-flag"/></svg> <b id="score">0</b> m</span>
     <span class="gx-pill gx-pill--best"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-trophy"/></svg> Best <b id="best">0</b></span>
+    <button class="gx-help__open" id="gxHelpOpen" aria-label="How to play"><svg class="gx-ico"><use href="#i-info"/></svg></button>
   </div>
 
   <div id="spdwrap">SPD <div id="spdbar"><div id="spdfill"></div></div></div>
@@ -92,6 +93,21 @@
       <div class="gx-modal__row">Distance <b id="pScore">0</b> m</div>
       <div class="gx-modal__row">Near misses <b id="pMiss">0</b></div>
       <button class="gx-btn gx-btn--primary" id="resume"><svg class="gx-ico"><use href="#i-play"/></svg> Resume</button>
+    </div>
+  </div>
+
+  <div class="gx-modal" id="gxHelp">
+    <div class="gx-modal__card">
+      <div class="gx-modal__title">How to Play</div>
+      <p class="gx-help__obj">Weave your car through the highway traffic and survive as long as you can &mdash; the farther you drive, the higher your score.</p>
+      <ul class="gx-help__list">
+        <li><b>Drag / A D</b><span>Steer left &amp; right</span></li>
+        <li><b>Arrows / Pads</b><span>Change lane</span></li>
+        <li><b>Graze a car</b><span>Near-miss bonus</span></li>
+        <li><b>P</b><span>Pause</span></li>
+        <li><b>R</b><span>Restart</span></li>
+      </ul>
+      <button class="gx-btn gx-btn--primary" id="gxHelpClose">Got it</button>
     </div>
   </div>
 
@@ -315,6 +331,7 @@
     addEventListener('keydown',(e)=>{
       if(GAMEKEYS.has(e.key)) e.preventDefault();
       if(e.repeat) return;
+      if(document.getElementById('gxHelp').classList.contains('gx-show')) return;
       if(e.key==='r'||e.key==='R'){ reset(); return; }
       if(e.key==='p'||e.key==='P'){ togglePause(); return; }
       if(!alive){ if(e.key===' '||e.key==='Enter') reset(); return; }
@@ -357,6 +374,22 @@
     }
     $('resume').onclick=()=>{ if(paused) togglePause(); };
     $('again').onclick=reset;
+
+    /* ---------- how-to-play overlay ---------- */
+    const SEEN_KEY='gamf-seen-racing-'+SLUG;
+    let helpResume=false;          // whether to resume after closing help
+    function openHelp(){
+      if(alive && !paused){ paused=true; helpResume=true; } else helpResume=false;
+      $('gxHelp').classList.add('gx-show');
+    }
+    function closeHelp(){
+      $('gxHelp').classList.remove('gx-show');
+      if(helpResume && alive){ paused=false; helpResume=false; }
+    }
+    $('gxHelpOpen').onclick=openHelp;
+    $('gxHelpClose').onclick=closeHelp;
+    $('gxHelp').addEventListener('click',e=>{ if(e.target===$('gxHelp')) closeHelp(); });
+    if(!localStorage.getItem(SEEN_KEY)){ $('gxHelp').classList.add('gx-show'); localStorage.setItem(SEEN_KEY,'1'); }
 
     function resize(){ renderer.setSize(innerWidth,innerHeight);
       camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); }

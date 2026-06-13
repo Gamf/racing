@@ -51,6 +51,7 @@
     <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-touch"/></svg> CP <b><span id="cp">0</span>/<span id="cpTotal">0</span></b></span>
     <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-pause"/></svg> <b id="time">45.0</b></span>
     <span class="gx-pill gx-pill--best"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-trophy"/></svg> Best <b id="best">0</b></span>
+    <button class="gx-help__open" id="gxHelpOpen" aria-label="How to play"><svg class="gx-ico"><use href="#i-info"/></svg></button>
   </div>
 
   <!-- controls hint -->
@@ -81,6 +82,22 @@
       <div class="gx-modal__row">Best <b id="finalBest">0</b></div>
       <p class="gx-modal__new" id="newBest"></p>
       <button class="gx-btn gx-btn--primary" id="again"><svg class="gx-ico"><use href="#i-restart"/></svg> Race again</button>
+    </div>
+  </div>
+
+  <!-- how-to-play overlay -->
+  <div class="gx-modal" id="gxHelp">
+    <div class="gx-modal__card">
+      <div class="gx-modal__title">How to Play</div>
+      <p class="gx-help__obj">Hit every glowing checkpoint in order and complete laps before the clock runs out — each gate adds time.</p>
+      <ul class="gx-help__list">
+        <li><b>Drag / A · D</b><span>Steer</span></li>
+        <li><b>Arrows</b><span>Steer</span></li>
+        <li><b>Tap pad / Space</b><span>Boost</span></li>
+        <li><b>P</b><span>Pause</span></li>
+        <li><b>R</b><span>Restart</span></li>
+      </ul>
+      <button class="gx-btn gx-btn--primary" id="gxHelpClose">Got it</button>
     </div>
   </div>
 
@@ -287,7 +304,10 @@
       placeCarAtStart();
       steer=0; input.left=input.right=input.boost=false; boostT=0;
       cps.forEach(c=>{ c.got=false; c.grp.visible=true; });
-      cpGot=0; nextCp=0; laps=0; timeLeft=45; running=true; paused=false; score=0;
+      cpGot=0; nextCp=0; laps=0; timeLeft=45; running=true; score=0;
+      // stay paused if the how-to-play overlay is currently open
+      const helpOpen=document.getElementById('gxHelp')?.classList.contains('gx-show');
+      paused = !!helpOpen; pausedByHelp = !!helpOpen;
       sparks.forEach(p=>{p.m.visible=false;p.life=0;});
       // highlight first gate
       highlightNext();
@@ -360,6 +380,25 @@
       }
     });
     $('again').onclick=reset;
+
+    // ---------- how-to-play overlay ----------
+    const SEEN_KEY='gamf-seen-racing-time-trial';
+    let pausedByHelp=false;
+    function openHelp(){
+      $('gxHelp').classList.add('gx-show');
+      if(running && !paused){ paused=true; pausedByHelp=true; }
+    }
+    function closeHelp(){
+      $('gxHelp').classList.remove('gx-show');
+      if(pausedByHelp){ paused=false; pausedByHelp=false; }
+    }
+    $('gxHelpOpen').addEventListener('click',openHelp);
+    $('gxHelpClose').addEventListener('click',closeHelp);
+    $('gxHelp').addEventListener('click',(e)=>{ if(e.target===$('gxHelp')) closeHelp(); });
+    if(!localStorage.getItem(SEEN_KEY)){
+      $('gxHelp').classList.add('gx-show');
+      localStorage.setItem(SEEN_KEY,'1');
+    }
 
     // ---------- helpers ----------
     function nearestCenterDist(x,z){

@@ -23,6 +23,7 @@
     <span class="gx-hud__spacer"></span>
     <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-car"/></svg> Score <b id="score">0</b></span>
     <span class="gx-pill gx-pill--best"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-trophy"/></svg> Best <b id="best">0</b></span>
+    <button class="gx-help__open" id="gxHelpOpen" aria-label="How to play"><svg class="gx-ico"><use href="#i-info"/></svg></button>
   </div>
   <div class="gx-hint">
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-touch"/></svg> drag / tap sides</span>
@@ -35,7 +36,21 @@
       <h2 class="gx-modal__title">Crashed!</h2>
       <div class="gx-modal__row">Score <b id="finalScore">0</b></div>
       <div class="gx-modal__row">Best <b id="finalBest">0</b></div>
+      <div class="gx-modal__new" id="finalNew"></div>
       <button class="gx-btn gx-btn--primary" id="again"><svg class="gx-ico"><use href="#i-restart"/></svg> Drive again</button>
+    </div>
+  </div>
+  <div class="gx-modal" id="gxHelp">
+    <div class="gx-modal__card">
+      <div class="gx-modal__title">How to Play</div>
+      <p class="gx-help__obj">Weave between lanes and dodge the oncoming traffic for as long as you can — each car you pass scores a point.</p>
+      <ul class="gx-help__list">
+        <li><b>Drag / Arrows</b><span>Steer left &amp; right</span></li>
+        <li><b>Tap side / A&nbsp;D</b><span>Nudge a lane</span></li>
+        <li><b>P</b><span>Pause</span></li>
+        <li><b>R</b><span>Restart</span></li>
+      </ul>
+      <button class="gx-btn gx-btn--primary" id="gxHelpClose">Got it</button>
     </div>
   </div>
   <script type="importmap">
@@ -127,6 +142,7 @@
     const KEYS=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','A','d','D','w','W','s','S',' ','Enter','r','R','p','P']);
     addEventListener('keydown',(e)=>{
       if(KEYS.has(e.key)) e.preventDefault();
+      if(document.getElementById('gxHelp').classList.contains('gx-show')) return;
       if(e.key==='r'||e.key==='R'){ reset(); return; }
       if(e.key==='p'||e.key==='P'){ if(alive) paused=!paused; return; }
       if(!alive){ if(e.key===' '||e.key==='Enter'){ reset(); } return; }
@@ -140,11 +156,23 @@
     addEventListener('resize',resize); resize();
 
     function end(){ alive=false; burst(carGroup.position.x,0.5,carGroup.position.z);
-      if(score>best){ best=score; localStorage.setItem(BEST_KEY,best); document.getElementById('best').textContent=best; }
+      const isNew=score>best;
+      if(isNew){ best=score; localStorage.setItem(BEST_KEY,best); document.getElementById('best').textContent=best; }
       document.getElementById('finalScore').textContent=score;
       document.getElementById('finalBest').textContent=best;
+      document.getElementById('finalNew').textContent=isNew?'New best!':'';
       document.getElementById('over').classList.add('gx-show'); }
     document.getElementById('again').onclick=reset;
+
+    // ---- How to play overlay ----
+    const HELP_KEY='gamf-seen-racing-'+SLUG;
+    const help=document.getElementById('gxHelp');
+    let helpPrevPaused=false;
+    function showHelp(){ helpPrevPaused=paused; if(alive) paused=true; help.classList.add('gx-show'); }
+    function hideHelp(){ help.classList.remove('gx-show'); if(alive) paused=helpPrevPaused; }
+    document.getElementById('gxHelpOpen').addEventListener('click',showHelp);
+    document.getElementById('gxHelpClose').addEventListener('click',hideHelp);
+    help.addEventListener('click',(e)=>{ if(e.target===help) hideHelp(); });
 
     let t=0;
     function animate(){ requestAnimationFrame(animate); t+=0.016;
@@ -168,6 +196,7 @@
       renderer.render(scene,camera);
     }
     reset(); animate();
+    if(!localStorage.getItem(HELP_KEY)){ showHelp(); localStorage.setItem(HELP_KEY,'1'); }
   </script>
 </body>
 </html>

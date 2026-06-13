@@ -56,6 +56,7 @@
     <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-target"/></svg> Gate <b id="gate">0</b></span>
     <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-car"/></svg> <b id="score">0</b></span>
     <span class="gx-pill gx-pill--best"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-trophy"/></svg> Best <b id="best">0</b></span>
+    <button class="gx-help__open" id="gxHelpOpen" aria-label="How to play"><svg class="gx-ico"><use href="#i-info"/></svg></button>
   </div>
 
   <div id="timewrap"><div id="timebar"><div id="timefill"></div></div></div>
@@ -95,6 +96,21 @@
     </div>
   </div>
 
+  <div class="gx-modal" id="gxHelp">
+    <div class="gx-modal__card">
+      <div class="gx-modal__title">How to Play</div>
+      <p class="gx-help__obj">Steer through each glowing checkpoint gate before the clock runs out — every gate banks more time and points.</p>
+      <ul class="gx-help__list">
+        <li><b>Swipe / A D / Arrows</b><span>Steer left &amp; right</span></li>
+        <li><b>Drift pad / Space / Down</b><span>Drift for sharper turns</span></li>
+        <li><b>Hit the gate</b><span>Bank time &amp; score</span></li>
+        <li><b>P</b><span>Pause</span></li>
+        <li><b>R</b><span>Restart</span></li>
+      </ul>
+      <button class="gx-btn gx-btn--primary" id="gxHelpClose">Got it</button>
+    </div>
+  </div>
+
   <script type="importmap">
     { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
   </script>
@@ -127,7 +143,7 @@
     dl.castShadow=true; dl.shadow.mapSize.set(2048,2048);
     dl.shadow.camera.near=1; dl.shadow.camera.far=120;
     dl.shadow.camera.left=-40; dl.shadow.camera.right=40; dl.shadow.camera.top=40; dl.shadow.camera.bottom=-40;
-    scene.add(dl);
+    scene.add(dl); scene.add(dl.target);   // target must be in the scene graph for the light to aim
     const accent=new THREE.PointLight(0xffcf6b,0.7,30); scene.add(accent);
 
     // big ground
@@ -321,6 +337,11 @@
     addEventListener('keydown',(e)=>{
       if(GAMEKEYS.has(e.key)) e.preventDefault();
       if(e.repeat) return;
+      // while the how-to-play overlay is open, swallow game input; Space/Enter dismisses it
+      if($('gxHelp').classList.contains('gx-show')){
+        if(e.key===' '||e.key==='Enter') hideHelp();
+        return;
+      }
       if(e.key==='r'||e.key==='R'){ reset(); return; }
       if(e.key==='p'||e.key==='P'){ togglePause(); return; }
       if(!alive){ if(e.key===' '||e.key==='Enter'){ reset(); } return; }
@@ -365,7 +386,26 @@
     $('resume').onclick=togglePause;
     $('again').onclick=reset;
 
-    function resize(){ renderer.setSize(innerWidth,innerHeight);
+    /* ---------- how-to-play overlay ---------- */
+    const SEEN_KEY='gamf-seen-racing-'+SLUG;
+    let helpResume=false;   // whether to un-pause the game when help closes
+    function showHelp(){
+      // pause the running game (without opening the pause modal) while help is open
+      helpResume = (alive && !paused);
+      if(helpResume) paused=true;
+      $('gxHelp').classList.add('gx-show');
+    }
+    function hideHelp(){
+      $('gxHelp').classList.remove('gx-show');
+      if(helpResume){ paused=false; helpResume=false; }
+    }
+    $('gxHelpOpen').addEventListener('click', showHelp);
+    $('gxHelpClose').addEventListener('click', hideHelp);
+    $('gxHelp').addEventListener('click', e=>{ if(e.target===$('gxHelp')) hideHelp(); });
+    if(!localStorage.getItem(SEEN_KEY)){ $('gxHelp').classList.add('gx-show'); localStorage.setItem(SEEN_KEY,'1'); }
+
+    function resize(){ renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+      renderer.setSize(innerWidth,innerHeight);
       camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); }
     addEventListener('resize',resize); resize();
 

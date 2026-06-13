@@ -41,6 +41,7 @@
     <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-coin"/></svg> <b id="score">0</b></span>
     <span class="gx-pill"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-pause"/></svg> <b id="time">45.0</b></span>
     <span class="gx-pill gx-pill--best"><svg class="gx-ico" style="width:1em;height:1em"><use href="#i-trophy"/></svg> Best <b id="best">0</b></span>
+    <button class="gx-help__open" id="gxHelpOpen" aria-label="How to play"><svg class="gx-ico"><use href="#i-info"/></svg></button>
   </div>
   <div class="gx-hint">
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-coin"/></svg> drag to steer</span>
@@ -62,6 +63,20 @@
       <div class="gx-modal__row">Best <b id="finalBest">0</b></div>
       <div class="gx-modal__new" id="newBest"></div>
       <button class="gx-btn gx-btn--primary" id="again"><svg class="gx-ico"><use href="#i-restart"/></svg> Race again</button>
+    </div>
+  </div>
+  <div class="gx-modal" id="gxHelp">
+    <div class="gx-modal__card">
+      <div class="gx-modal__title">How to Play</div>
+      <p class="gx-help__obj">Grab every coin and the roaming red gem to rack up points and buy back time before the clock hits zero.</p>
+      <ul class="gx-help__list">
+        <li><b>Drag / ← →</b><span>Steer the car</span></li>
+        <li><b>Tap gas / Space</b><span>Boost speed</span></li>
+        <li><b>↓ / S</b><span>Brake</span></li>
+        <li><b>P</b><span>Pause</span></li>
+        <li><b>R</b><span>Restart</span></li>
+      </ul>
+      <button class="gx-btn gx-btn--primary" id="gxHelpClose">Got it</button>
     </div>
   </div>
   <canvas id="c"></canvas>
@@ -135,6 +150,7 @@
       coinsGot=0; timeLeft=45; running=true; paused=false; score=0;
       combo=0; comboTimer=0; gem.alive=false; gemTimer=8;
       parts.length=0; pops.length=0; steer=0;
+      input.left=false; input.right=false; input.gas=true; input.boost=false;
       $('score').textContent=0;
       $('time').textContent=timeLeft.toFixed(1);
       $('over').classList.remove('gx-show');
@@ -173,7 +189,7 @@
       switch(e.key){
         case 'ArrowLeft': case 'a': case 'A': input.left=false; break;
         case 'ArrowRight': case 'd': case 'D': input.right=false; break;
-        case 'ArrowUp': case 'w': case 'W': input.gas=true; break;
+        case 'ArrowDown': case 's': case 'S': input.gas=true; break;
         case ' ': case 'Enter': input.boost=false; break;
       }
     });
@@ -387,6 +403,23 @@
       draw();
     }
     reset(); requestAnimationFrame(loop);
+
+    // ---- How-to-play overlay ----
+    const SEEN_KEY='gamf-seen-racing-'+SLUG;
+    const helpEl=$('gxHelp');
+    let pausedByHelp=false;
+    function showHelp(){
+      helpEl.classList.add('gx-show');
+      if(running && !paused){ paused=true; pausedByHelp=true; }
+    }
+    function hideHelp(){
+      helpEl.classList.remove('gx-show');
+      if(pausedByHelp){ paused=false; pausedByHelp=false; }
+    }
+    $('gxHelpOpen').addEventListener('click', showHelp);
+    $('gxHelpClose').addEventListener('click', hideHelp);
+    helpEl.addEventListener('click',(e)=>{ if(e.target===helpEl) hideHelp(); });
+    if(!localStorage.getItem(SEEN_KEY)){ showHelp(); localStorage.setItem(SEEN_KEY,'1'); }
   </script>
 </body>
 </html>
