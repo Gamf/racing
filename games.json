@@ -3,6 +3,16 @@
   "title": "Racing",
   "games": [
     {
+      "slug": "highway",
+      "title": "Highway",
+      "path": "games/highway/",
+      "icon": "🏎️",
+      "dims": "3D",
+      "tags": ["steer", "dodge", "endless"],
+      "license": "MIT",
+      "credit": "Gamf sample"
+    },
+    {
       "slug": "sample-racer",
       "title": "Lane Dash",
       "path": "games/sample-racer/",
