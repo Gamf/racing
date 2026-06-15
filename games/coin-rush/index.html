@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#15110e">
+  <meta name="theme-color" content="#efe6d2">
   <title>Coin Rush — Gamf</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,7 +13,7 @@
   { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
   </script>
   <style>
-    body{ --gx-accent:#f2c14e; margin:0; height:100%; overflow:hidden;
+    body{ --gx-accent:#9b3a22; margin:0; height:100%; overflow:hidden; background:#efe6d2;
       touch-action:none; -webkit-user-select:none; user-select:none; }
     html,body{ height:100%; }
     canvas{display:block;width:100%;height:100%;touch-action:none}
@@ -21,16 +21,16 @@
     .pads{position:fixed;inset:0;z-index:5;pointer-events:none}
     .pad{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 78px);width:78px;height:78px;border-radius:50%;
       display:grid;place-items:center;pointer-events:auto;color:var(--gx-text);
-      background:color-mix(in srgb, var(--gx-amber) 16%, transparent);
-      border:1px solid color-mix(in srgb, var(--gx-amber) 45%, var(--gx-line));
+      background:color-mix(in srgb, var(--gx-accent) 16%, transparent);
+      border:1px solid color-mix(in srgb, var(--gx-accent) 45%, var(--gx-line));
       backdrop-filter:blur(6px);transition:transform .1s, background .12s}
-    .pad:active{transform:scale(.92);background:color-mix(in srgb, var(--gx-amber) 34%, transparent)}
+    .pad:active{transform:scale(.92);background:color-mix(in srgb, var(--gx-accent) 34%, transparent)}
     .pad svg{width:30px;height:30px}
     #padL{left:calc(env(safe-area-inset-left) + 18px)} #padR{left:calc(env(safe-area-inset-left) + 108px)}
-    #padGas{right:calc(env(safe-area-inset-right) + 18px);color:var(--gx-red);
-      background:color-mix(in srgb, var(--gx-red) 16%, transparent);
-      border-color:color-mix(in srgb, var(--gx-red) 45%, var(--gx-line))}
-    #padGas:active{background:color-mix(in srgb, var(--gx-red) 34%, transparent)}
+    #padGas{right:calc(env(safe-area-inset-right) + 18px);color:#6f6a3b;
+      background:color-mix(in srgb, #6f6a3b 16%, transparent);
+      border-color:color-mix(in srgb, #6f6a3b 45%, var(--gx-line))}
+    #padGas:active{background:color-mix(in srgb, #6f6a3b 34%, transparent)}
   </style>
 </head>
 <body class="gx">
@@ -238,13 +238,13 @@
       // off-track friction (grass)
       const d=nearestTrackDist(car.x,car.y);
       if(d>TRACK_W){ car.speed*=Math.pow(0.86,dt*60); car.vx*=0.9; car.vy*=0.9;
-        if(car.speed>1 && rnd()<0.5) spawnPart(car.x,car.y,'#5a4632',2,2); }
+        if(car.speed>1 && rnd()<0.5) spawnPart(car.x,car.y,'#6f6a3b',2,2); }
 
       // boost trail + drift smoke
       if(input.boost && car.speed>2){ const bx=car.x-fx*16, by=car.y-fy*16;
-        spawnPart(bx,by,'rgba(216,65,43,0.55)',1,1.4); }
+        spawnPart(bx,by,'rgba(155,58,34,0.5)',1,1.4); }
       if(car.drift>0.06 && car.speed>2){ const bx=car.x-fx*16, by=car.y-fy*16;
-        spawnPart(bx,by,'rgba(220,205,180,0.4)',1,1); }
+        spawnPart(bx,by,'rgba(74,59,42,0.35)',1,1); }
 
       // combo timer decay
       if(comboTimer>0){ comboTimer-=dt; if(comboTimer<=0) combo=0; }
@@ -254,13 +254,13 @@
         if(Math.hypot(car.x-c.x,car.y-c.y)<28){ c.got=true; coinsGot++;
           combo=Math.min(combo+1,9); comboTimer=2.2;
           const val=10*combo;
-          score+=val; popText(c.x,c.y,'+'+val,'#e8a23a');
+          score+=val; popText(c.x,c.y,'+'+val,'#c8923a');
           $('score').textContent=score;
-          spawnPart(c.x,c.y,'#e8a23a',14,4); timeLeft=Math.min(timeLeft+0.6,60);
+          spawnPart(c.x,c.y,'#c8923a',14,4); timeLeft=Math.min(timeLeft+0.6,60);
           // respawn coins when all collected for an endless rush
           if(coins.every(k=>k.got)){
             for(const k of coins){ k.got=false; }
-            timeLeft=Math.min(timeLeft+4,60); popText(car.x,car.y-26,'LAP +4s','#d8412b');
+            timeLeft=Math.min(timeLeft+4,60); popText(car.x,car.y-26,'LAP +4s','#9b3a22');
           }
         }
       }
@@ -271,8 +271,8 @@
       if(gem.alive){ gem.phase+=dt*3; gem.timer-=dt;
         if(gem.timer<=0){ gem.alive=false; gemTimer=6; }
         else if(Math.hypot(car.x-gem.x,car.y-gem.y)<32){ gem.alive=false; gemTimer=7;
-          const val=100; score+=val; popText(gem.x,gem.y,'+'+val+'!','#d8412b');
-          $('score').textContent=score; spawnPart(gem.x,gem.y,'#d8412b',22,5);
+          const val=100; score+=val; popText(gem.x,gem.y,'+'+val+'!','#9b3a22');
+          $('score').textContent=score; spawnPart(gem.x,gem.y,'#9b3a22',22,5);
           timeLeft=Math.min(timeLeft+3,60);
         }
       }
@@ -298,16 +298,8 @@
 
     function draw(){
       bgT+=0.004;
-      // warm near-black background (arcade palette)
-      const g=ctx.createLinearGradient(0,0,0,H);
-      g.addColorStop(0,'#1a140f'); g.addColorStop(1,'#100c09');
-      ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-      // subtle drifting grid
-      ctx.save(); ctx.globalAlpha=0.05; ctx.strokeStyle='#e8a23a'; ctx.lineWidth=1;
-      const gs=48, off=(bgT*36)%gs;
-      for(let x=-off;x<W;x+=gs){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
-      for(let y=-off;y<H;y+=gs){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
-      ctx.restore();
+      // clean cream page (warm print catalogue)
+      ctx.fillStyle='#efe6d2'; ctx.fillRect(0,0,W,H);
 
       // camera follows car
       ctx.save();
@@ -315,40 +307,37 @@
       ctx.translate(-car.x,-car.y);
 
       ctx.lineJoin='round'; ctx.lineCap='round';
-      // tarmac band
+      // olive verge under the tarmac (flat, printed)
       ctx.beginPath(); pathTrack(); ctx.closePath();
-      ctx.strokeStyle='#241a13'; ctx.lineWidth=TRACK_W*2; ctx.stroke();
-      // amber edge glow
-      ctx.save(); ctx.shadowBlur=16; ctx.shadowColor='#e8a23a';
+      ctx.strokeStyle='#6f6a3b'; ctx.lineWidth=TRACK_W*2+14; ctx.stroke();
+      // tarmac band — warm brown ink
       ctx.beginPath(); pathTrack(); ctx.closePath();
-      ctx.strokeStyle='rgba(232,162,58,0.18)'; ctx.lineWidth=TRACK_W*2; ctx.stroke();
-      ctx.restore();
-      // center dashed racing line
-      ctx.save(); ctx.shadowBlur=8; ctx.shadowColor='#d8412b';
+      ctx.strokeStyle='#4a3b2a'; ctx.lineWidth=TRACK_W*2; ctx.stroke();
+      // center dashed racing line — oxblood accent, no glow
+      ctx.save();
       ctx.setLineDash([16,20]); ctx.lineDashOffset=-bgT*140;
       ctx.beginPath(); pathTrack(); ctx.closePath();
-      ctx.strokeStyle='rgba(216,65,43,0.5)'; ctx.lineWidth=3; ctx.stroke();
+      ctx.strokeStyle='rgba(155,58,34,0.55)'; ctx.lineWidth=3; ctx.stroke();
       ctx.setLineDash([]); ctx.restore();
 
-      // coins
+      // coins — flat ochre ink discs
       for(const c of coins){ if(c.got) continue;
         const r=12+Math.sin(c.phase)*2;
-        ctx.save(); ctx.shadowBlur=16; ctx.shadowColor='#e8a23a';
-        const cg=ctx.createRadialGradient(c.x,c.y,1,c.x,c.y,r);
-        cg.addColorStop(0,'#fbe6ad'); cg.addColorStop(1,'#e8a23a');
-        ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(c.x,c.y,r,0,6.28); ctx.fill();
-        ctx.shadowBlur=0; ctx.strokeStyle='#a86f1e'; ctx.lineWidth=1.5;
+        ctx.save();
+        ctx.fillStyle='#c8923a'; ctx.beginPath(); ctx.arc(c.x,c.y,r,0,6.28); ctx.fill();
+        ctx.strokeStyle='#221f17'; ctx.lineWidth=1.5;
+        ctx.beginPath(); ctx.arc(c.x,c.y,r,0,6.28); ctx.stroke();
         ctx.beginPath(); ctx.arc(c.x,c.y,r*0.55,0,6.28); ctx.stroke();
         ctx.restore();
       }
 
-      // bonus gem (diamond)
+      // bonus gem (diamond) — oxblood accent, flat ink, no glow
       if(gem.alive){ const pulse=1+Math.sin(gem.phase)*0.18; const blink=gem.timer<2?(Math.sin(gem.phase*6)>0?1:0.35):1;
         ctx.save(); ctx.translate(gem.x,gem.y); ctx.rotate(gem.phase*0.5); ctx.scale(pulse,pulse);
-        ctx.globalAlpha=blink; ctx.shadowBlur=20; ctx.shadowColor='#d8412b';
-        ctx.fillStyle='#d8412b'; ctx.beginPath();
+        ctx.globalAlpha=blink;
+        ctx.fillStyle='#9b3a22'; ctx.beginPath();
         ctx.moveTo(0,-14); ctx.lineTo(12,0); ctx.lineTo(0,14); ctx.lineTo(-12,0); ctx.closePath(); ctx.fill();
-        ctx.shadowBlur=0; ctx.fillStyle='#f4ede1'; ctx.beginPath();
+        ctx.fillStyle='#efe6d2'; ctx.beginPath();
         ctx.moveTo(0,-7); ctx.lineTo(5,0); ctx.lineTo(0,7); ctx.lineTo(-5,0); ctx.closePath(); ctx.fill();
         ctx.restore();
       }
@@ -364,35 +353,31 @@
         ctx.fillStyle=p.col; ctx.fillText(p.txt,p.x,p.y); }
       ctx.globalAlpha=1; ctx.textAlign='left';
 
-      // car
+      // car — flat oxblood body, the player accent (no glow)
       ctx.save();
       ctx.translate(car.x,car.y); ctx.rotate(car.a);
-      ctx.fillStyle='rgba(0,0,0,0.45)'; roundRect(-15,-7,33,19,5);
-      ctx.shadowBlur=14; ctx.shadowColor='#d8412b';
-      const bg=ctx.createLinearGradient(-16,0,16,0); bg.addColorStop(0,'#e8553a'); bg.addColorStop(1,'#d8412b');
-      ctx.fillStyle=bg; roundRect(-16,-9,32,18,5);
-      ctx.shadowBlur=0;
-      ctx.fillStyle='#1b0f0c'; roundRect(-4,-6,12,12,3);
-      ctx.shadowBlur=10; ctx.shadowColor='#e8a23a'; ctx.fillStyle='#e8a23a'; roundRect(12,-7,3,14,2);
-      ctx.shadowBlur=0;
+      ctx.fillStyle='rgba(34,31,23,0.28)'; roundRect(-15,-7,33,19,5);
+      ctx.fillStyle='#9b3a22'; roundRect(-16,-9,32,18,5);
+      ctx.fillStyle='#221f17'; roundRect(-4,-6,12,12,3);
+      ctx.fillStyle='#c8923a'; roundRect(12,-7,3,14,2);
       ctx.restore();
 
       ctx.restore();
 
       // combo readout
       if(combo>1 && running && !paused){
-        ctx.save(); ctx.textAlign='center'; ctx.fillStyle='#e8a23a';
+        ctx.save(); ctx.textAlign='center'; ctx.fillStyle='#9b3a22';
         ctx.font='700 22px "Anton", system-ui';
         ctx.fillText('x'+combo+' COMBO', W/2, 76);
         ctx.restore();
       }
 
       // pause overlay
-      if(paused){ ctx.fillStyle='rgba(10,8,6,0.66)'; ctx.fillRect(0,0,W,H);
-        ctx.fillStyle='#f4ede1'; ctx.textAlign='center';
+      if(paused){ ctx.fillStyle='rgba(239,230,210,0.82)'; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle='#221f17'; ctx.textAlign='center';
         ctx.font='400 34px "Anton", system-ui';
         ctx.fillText('PAUSED', W/2, H/2-10);
-        ctx.font='400 14px "Space Mono", monospace'; ctx.fillStyle='#b3a48f';
+        ctx.font='400 14px "Space Mono", monospace'; ctx.fillStyle='#6c6450';
         ctx.fillText('PRESS P TO RESUME', W/2, H/2+18);
         ctx.textAlign='left'; }
     }

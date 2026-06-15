@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#07080c">
+  <meta name="theme-color" content="#efe6d2">
   <title>Highway — Gamf</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../gamf.css">
   <style>
-    body{ --gx-accent:#f2c14e; margin:0; height:100%; overflow:hidden;
+    body{ --gx-accent:#9b3a22; margin:0; height:100%; overflow:hidden; background:#efe6d2;
       touch-action:none; -webkit-user-select:none; user-select:none; }
     html,body{ height:100%; }
     canvas{display:block;width:100%;height:100%;touch-action:none}
@@ -67,53 +67,56 @@
     document.body.appendChild(renderer.domElement);
 
     const scene=new THREE.Scene();
-    // gradient skybox via vertex-colored background
-    const bgTop=new THREE.Color(0x10131f), bgBot=new THREE.Color(0x0a0c12);
-    scene.background=bgBot.clone();
-    scene.fog=new THREE.Fog(0x0a0c12,22,72);
+    // solid warm cream daylight background
+    scene.background=new THREE.Color(0xe9dcc0);
+    scene.fog=new THREE.Fog(0xe9dcc0,30,78);
     const camera=new THREE.PerspectiveCamera(66,1,0.1,160); camera.position.set(0,5.2,9.5); camera.lookAt(0,0.4,-12);
 
-    scene.add(new THREE.HemisphereLight(0x9fb4ff,0x161a26,0.85));
-    const dl=new THREE.DirectionalLight(0xffffff,1.05); dl.position.set(5,12,6);
+    // single warm directional + soft warm hemisphere
+    scene.add(new THREE.HemisphereLight(0xefe6d2,0x6f6a3b,0.85));
+    const dl=new THREE.DirectionalLight(0xfff1d6,1.05); dl.position.set(5,12,6);
     dl.castShadow=true; dl.shadow.mapSize.set(1024,1024);
     dl.shadow.camera.near=1; dl.shadow.camera.far=50;
     dl.shadow.camera.left=-14; dl.shadow.camera.right=14; dl.shadow.camera.top=14; dl.shadow.camera.bottom=-14;
     scene.add(dl);
-    // subtle accent point light that follows the car
-    const accent=new THREE.PointLight(0x6c8cff,0.8,26); accent.position.set(0,4,6); scene.add(accent);
+    scene.add(new THREE.AmbientLight(0xefe6d2,0.35));
 
     const ROAD_W=9, LANES=[-3,0,3];
-    const roadMat=new THREE.MeshStandardMaterial({color:0x1c2230,metalness:0.2,roughness:0.85});
+    // plain solid warm ground
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(220,260),
+      new THREE.MeshStandardMaterial({color:0x6f6a3b,roughness:0.95,metalness:0}));
+    ground.rotation.x=-Math.PI/2; ground.position.set(0,-0.02,-40); ground.receiveShadow=true; scene.add(ground);
+    const roadMat=new THREE.MeshStandardMaterial({color:0x4a3b2a,metalness:0,roughness:0.9});
     const roads=[0,1].map(i=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W,70),roadMat);
       m.rotation.x=-Math.PI/2; m.position.z=-i*70; m.receiveShadow=true; scene.add(m); return m; });
-    // glowing road edges
-    const edgeMat=new THREE.MeshStandardMaterial({color:0x6c8cff,emissive:0x2a40b0,emissiveIntensity:1.2});
+    // matte road edges (oxblood accent)
+    const edgeMat=new THREE.MeshStandardMaterial({color:0x9b3a22,roughness:0.7,metalness:0});
     [-1,1].forEach(s=>{ const e=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.12,140),edgeMat);
       e.position.set(s*(ROAD_W/2-0.1),0.05,-35); scene.add(e); });
-    // lane dashes
-    const dashMat=new THREE.MeshStandardMaterial({color:0x4a5570,emissive:0x20283c,emissiveIntensity:0.6});
+    // lane dashes (ochre)
+    const dashMat=new THREE.MeshStandardMaterial({color:0xc8923a,roughness:0.8,metalness:0});
     const dashes=[]; for(let i=0;i<24;i++){ const d=new THREE.Mesh(new THREE.PlaneGeometry(0.25,3),dashMat);
       d.rotation.x=-Math.PI/2; d.position.set(i%2?1.5:-1.5,0.02,-i*6); scene.add(d); dashes.push(d); }
-    // floating side scenery (parallax pylons)
-    const pyMat=new THREE.MeshStandardMaterial({color:0x232a3c,metalness:0.4,roughness:0.6,emissive:0x10202a,emissiveIntensity:0.4});
+    // side scenery (parallax pylons, matte clay)
+    const pyMat=new THREE.MeshStandardMaterial({color:0xa4623a,metalness:0,roughness:0.85});
     const pylons=[]; for(let i=0;i<10;i++){ const s=i%2?-1:1; const p=new THREE.Mesh(new THREE.BoxGeometry(0.6,3+(i%3),0.6),pyMat);
       p.position.set(s*7.5,1.5,-i*14); p.castShadow=true; scene.add(p); pylons.push(p); }
 
-    // Player car: body + cabin + emissive tail
+    // Player car: body + cabin + matte tail
     const carGroup=new THREE.Group();
     const car=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.7,2.6),
-      new THREE.MeshStandardMaterial({color:0xf2c14e,metalness:0.5,roughness:0.3}));
+      new THREE.MeshStandardMaterial({color:0x9b3a22,metalness:0,roughness:0.6}));
     car.castShadow=true; carGroup.add(car);
     const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.05,0.55,1.2),
-      new THREE.MeshStandardMaterial({color:0x10131f,metalness:0.6,roughness:0.2}));
+      new THREE.MeshStandardMaterial({color:0x221f17,metalness:0,roughness:0.55}));
     cabin.position.set(0,0.55,0.1); cabin.castShadow=true; carGroup.add(cabin);
     const tail=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.2,0.2),
-      new THREE.MeshStandardMaterial({color:0xe0556b,emissive:0xe0556b,emissiveIntensity:2}));
+      new THREE.MeshStandardMaterial({color:0x4a3b2a,metalness:0,roughness:0.7}));
     tail.position.set(0,0.1,1.35); carGroup.add(tail);
     carGroup.position.set(0,0.45,4); scene.add(carGroup);
 
     const obstacles=[]; let seed=99; const rnd=()=> (seed=(seed*1103515245+12345)&0x7fffffff)/0x7fffffff;
-    const obMat=()=>new THREE.MeshStandardMaterial({color:0xe0556b,metalness:0.3,roughness:0.5,emissive:0x3a0a14,emissiveIntensity:0.6});
+    const obMat=()=>new THREE.MeshStandardMaterial({color:0xc8923a,metalness:0,roughness:0.7});
     function mkOb(z){ const m=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.0,2.4),obMat());
       m.position.set(LANES[Math.floor(rnd()*3)],0.5,z); m.castShadow=true; scene.add(m); obstacles.push(m); }
     for(let i=0;i<7;i++) mkOb(-12-i*14);
@@ -121,7 +124,7 @@
     // particle burst pool for crashes
     const sparks=[]; const sparkGeo=new THREE.SphereGeometry(0.14,6,6);
     for(let i=0;i<28;i++){ const s=new THREE.Mesh(sparkGeo,
-      new THREE.MeshStandardMaterial({color:0xffcf6b,emissive:0xff8a3b,emissiveIntensity:2}));
+      new THREE.MeshStandardMaterial({color:0xa4623a,metalness:0,roughness:0.8}));
       s.visible=false; scene.add(s); sparks.push({m:s,vx:0,vy:0,vz:0,life:0}); }
     function burst(x,y,z){ for(const p of sparks){ p.m.position.set(x,y,z); p.m.visible=true;
       p.vx=(rnd()-0.5)*0.4; p.vy=rnd()*0.4+0.1; p.vz=(rnd()-0.5)*0.4; p.life=1; } }
@@ -180,7 +183,6 @@
         carGroup.position.x+=(targetX-carGroup.position.x)*0.2;
         carGroup.rotation.z=(carGroup.position.x-targetX)*0.12;
         carGroup.position.y=0.45+Math.sin(t*8)*0.015;
-        accent.position.x=carGroup.position.x; accent.position.z=carGroup.position.z;
         roads.forEach(r=>{ r.position.z+=speed; if(r.position.z>35) r.position.z-=140; });
         dashes.forEach(d=>{ d.position.z+=speed; if(d.position.z>10) d.position.z-=144; });
         pylons.forEach(p=>{ p.position.z+=speed; if(p.position.z>14) p.position.z-=140; p.rotation.y+=0.01; });

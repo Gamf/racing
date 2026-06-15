@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#07080c">
+  <meta name="theme-color" content="#efe6d2">
   <title>Time Trial — Gamf</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../gamf.css">
   <style>
-    /* genre accent: racing amber */
-    body{ --gx-accent:#f2c14e; margin:0; height:100%; overflow:hidden;
+    /* genre accent: oxblood */
+    body{ --gx-accent:#9b3a22; margin:0; height:100%; overflow:hidden;
       touch-action:none; -webkit-user-select:none; user-select:none; }
     html,body{ height:100%; }
     canvas{ display:block; width:100%; height:100%; touch-action:none; }
@@ -121,27 +121,27 @@
     document.body.appendChild(renderer.domElement);
 
     const scene=new THREE.Scene();
-    scene.background=new THREE.Color(0x07080c);
-    scene.fog=new THREE.Fog(0x07080c, 60, 240);
+    scene.background=new THREE.Color(0xe9dcc0);
+    scene.fog=new THREE.Fog(0xe9dcc0, 90, 300);
 
     const camera=new THREE.PerspectiveCamera(62,1,0.1,600);
 
-    // lights
-    scene.add(new THREE.HemisphereLight(0x9fb4ff,0x0b0d14,0.7));
-    const dl=new THREE.DirectionalLight(0xffffff,1.0); dl.position.set(40,80,30);
+    // lights — single warm directional + soft warm hemisphere
+    scene.add(new THREE.HemisphereLight(0xf3e8cf,0x6f6a3b,0.85));
+    scene.add(new THREE.AmbientLight(0xefe6d2,0.25));
+    const dl=new THREE.DirectionalLight(0xfff0d8,1.05); dl.position.set(40,80,30);
     dl.castShadow=true; dl.shadow.mapSize.set(2048,2048);
     dl.shadow.camera.near=10; dl.shadow.camera.far=320;
     dl.shadow.camera.left=-160; dl.shadow.camera.right=160; dl.shadow.camera.top=160; dl.shadow.camera.bottom=-160;
     scene.add(dl);
-    const accent=new THREE.PointLight(0xf2c14e,1.1,70); accent.position.set(0,8,0); scene.add(accent);
+    // no neon point-light; keep a no-op stand-in so the render loop is unchanged
+    const accent={position:{set(){}}};
 
-    // ground plane (dark grid floor)
+    // ground plane (plain solid warm olive ground)
     const ground=new THREE.Mesh(
       new THREE.PlaneGeometry(2000,2000),
-      new THREE.MeshStandardMaterial({color:0x0a0c14, metalness:0.1, roughness:0.95}));
+      new THREE.MeshStandardMaterial({color:0x6f6a3b, metalness:0.0, roughness:1.0}));
     ground.rotation.x=-Math.PI/2; ground.position.y=-0.05; ground.receiveShadow=true; scene.add(ground);
-    const grid=new THREE.GridHelper(2000,200,0x1a2030,0x12161f);
-    grid.position.y=-0.03; scene.add(grid);
 
     // ---------- circuit centerline (closed squircle loop) ----------
     const N=240, RX=160, RY=110;
@@ -175,13 +175,13 @@
       geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
       geo.setIndex(idx); geo.computeVertexNormals();
       const road=new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-        color:0x161a26, metalness:0.25, roughness:0.8 }));
+        color:0x4a3b2a, metalness:0.0, roughness:0.95 }));
       road.position.y=0.01; road.receiveShadow=true; scene.add(road);
     })();
 
     // glowing edge rails (two offset line loops as thin boxes)
     (function buildRails(){
-      const railMat=new THREE.MeshStandardMaterial({color:0xf2c14e, emissive:0xf2a020, emissiveIntensity:1.4});
+      const railMat=new THREE.MeshStandardMaterial({color:0x9b3a22, metalness:0.0, roughness:0.85});
       for(const side of [1,-1]){
         for(let i=0;i<N;i+=1){
           const p=center[i], t=tangentAt(i);
@@ -196,7 +196,7 @@
 
     // center dashed racing line
     (function buildDashes(){
-      const dMat=new THREE.MeshStandardMaterial({color:0x4ea8ff, emissive:0x1c3a66, emissiveIntensity:0.8});
+      const dMat=new THREE.MeshStandardMaterial({color:0xc8923a, metalness:0.0, roughness:0.9});
       for(let i=0;i<N;i+=3){
         const p=center[i], t=tangentAt(i);
         const d=new THREE.Mesh(new THREE.PlaneGeometry(0.6,4), dMat);
@@ -207,7 +207,7 @@
 
     // distant scenery: glowing pylons placed deterministically around the loop
     (function buildScenery(){
-      const pyMat=new THREE.MeshStandardMaterial({color:0x232a3c, metalness:0.4, roughness:0.6, emissive:0x10202a, emissiveIntensity:0.5});
+      const pyMat=new THREE.MeshStandardMaterial({color:0xa4623a, metalness:0.0, roughness:0.9});
       for(let i=0;i<N;i+=10){
         const p=center[i], t=tangentAt(i);
         const nx=-Math.sin(t), nz=Math.cos(t);
@@ -230,12 +230,12 @@
         const p=center[i], t=tangentAt(i);
         const grp=new THREE.Group();
         grp.position.set(p.x,0,p.z); grp.rotation.y=-t;
-        // ring torus
-        const ringMat=new THREE.MeshStandardMaterial({color:0x36e0c2, emissive:0x1a8f7a, emissiveIntensity:1.2});
+        // ring torus (matte; oxblood when active, olive when idle)
+        const ringMat=new THREE.MeshStandardMaterial({color:0x6f6a3b, metalness:0.0, roughness:0.85});
         const ring=new THREE.Mesh(new THREE.TorusGeometry(ROAD_W*0.78,0.9,10,28), ringMat);
         ring.rotation.y=Math.PI/2; ring.position.y=ROAD_W*0.78; grp.add(ring);
-        // light beam pillar
-        const beamMat=new THREE.MeshBasicMaterial({color:0x36e0c2, transparent:true, opacity:0.16});
+        // marker pillar (subtle warm wayfinder, no glow)
+        const beamMat=new THREE.MeshBasicMaterial({color:0x9b3a22, transparent:true, opacity:0.12});
         const beam=new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.4,60,12,1,true), beamMat);
         beam.position.set(0, 30, 0); grp.add(beam);
         scene.add(grp);
@@ -246,23 +246,23 @@
     // ---------- player car ----------
     const carGroup=new THREE.Group();
     const body=new THREE.Mesh(new THREE.BoxGeometry(3.2,1.1,5.4),
-      new THREE.MeshStandardMaterial({color:0xf2c14e, metalness:0.55, roughness:0.3}));
+      new THREE.MeshStandardMaterial({color:0x9b3a22, metalness:0.0, roughness:0.6}));
     body.castShadow=true; carGroup.add(body);
     const nose=new THREE.Mesh(new THREE.BoxGeometry(2.6,0.7,1.6),
-      new THREE.MeshStandardMaterial({color:0xf0a020, metalness:0.5, roughness:0.35}));
+      new THREE.MeshStandardMaterial({color:0xa4623a, metalness:0.0, roughness:0.65}));
     nose.position.set(0,-0.1,-3.2); nose.castShadow=true; carGroup.add(nose);
     const cabin=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.9,2.4),
-      new THREE.MeshStandardMaterial({color:0x10131f, metalness:0.6, roughness:0.2}));
+      new THREE.MeshStandardMaterial({color:0x221f17, metalness:0.0, roughness:0.5}));
     cabin.position.set(0,0.9,0.2); cabin.castShadow=true; carGroup.add(cabin);
     const tail=new THREE.Mesh(new THREE.BoxGeometry(3.2,0.4,0.4),
-      new THREE.MeshStandardMaterial({color:0xe0556b, emissive:0xe0556b, emissiveIntensity:2}));
+      new THREE.MeshStandardMaterial({color:0xc8923a, metalness:0.0, roughness:0.7}));
     tail.position.set(0,0.5,2.9); carGroup.add(tail);
     const wing=new THREE.Mesh(new THREE.BoxGeometry(3.6,0.25,0.9),
-      new THREE.MeshStandardMaterial({color:0x10131f, metalness:0.5, roughness:0.4}));
+      new THREE.MeshStandardMaterial({color:0x4a3b2a, metalness:0.0, roughness:0.7}));
     wing.position.set(0,1.2,2.8); carGroup.add(wing);
     // wheels
     const wheelGeo=new THREE.CylinderGeometry(0.9,0.9,0.7,16);
-    const wheelMat=new THREE.MeshStandardMaterial({color:0x0a0c12, metalness:0.4, roughness:0.6});
+    const wheelMat=new THREE.MeshStandardMaterial({color:0x221f17, metalness:0.0, roughness:0.7});
     const wheels=[];
     for(const [wx,wz] of [[-1.7,-1.9],[1.7,-1.9],[-1.7,2.0],[1.7,2.0]]){
       const w=new THREE.Mesh(wheelGeo,wheelMat); w.rotation.z=Math.PI/2;
@@ -274,11 +274,11 @@
     const sparks=[]; const sparkGeo=new THREE.SphereGeometry(0.32,6,6);
     for(let i=0;i<48;i++){
       const s=new THREE.Mesh(sparkGeo,
-        new THREE.MeshStandardMaterial({color:0xffe28a, emissive:0xffb454, emissiveIntensity:2}));
+        new THREE.MeshStandardMaterial({color:0xc8923a, metalness:0.0, roughness:0.9}));
       s.visible=false; scene.add(s); sparks.push({m:s,vx:0,vy:0,vz:0,life:0});
     }
     function burst(x,y,z,col){ for(const p of sparks){ if(p.life>0) continue;
-      p.m.position.set(x,y,z); p.m.material.color.set(col); p.m.material.emissive.set(col);
+      p.m.position.set(x,y,z); p.m.material.color.set(col);
       p.m.visible=true; p.vx=(rnd()-0.5)*1.4; p.vy=rnd()*1.2+0.3; p.vz=(rnd()-0.5)*1.4; p.life=1; } }
 
     // ---------- car physics state ----------
@@ -320,14 +320,15 @@
     function highlightNext(){
       cps.forEach((c,i)=>{
         const isNext = (i===nextCp) && !c.got;
-        const col = isNext ? 0xffd34d : 0x36e0c2;
-        c.ringMat.color.set(col); c.ringMat.emissive.set(isNext?0xf2a020:0x1a8f7a);
-        c.beamMat.color.set(col); c.beamMat.opacity = isNext ? 0.26 : 0.10;
+        // active gate = oxblood accent; idle gates = muted olive
+        const col = isNext ? 0x9b3a22 : 0x6f6a3b;
+        c.ringMat.color.set(col);
+        c.beamMat.color.set(col); c.beamMat.opacity = isNext ? 0.18 : 0.07;
       });
     }
 
     function flash(msg,col){
-      const f=$('flash'); f.textContent=msg; f.style.color=col||'#36e0c2';
+      const f=$('flash'); f.textContent=msg; f.style.color=col||'#9b3a22';
       f.classList.add('show');
       // hide handled in loop via timer
       flash._until = t + 1.1;
@@ -462,17 +463,17 @@
           $('cp').textContent=cpGot % CP_COUNT;
           timeLeft=Math.min(timeLeft+3, 60); // reward time
           boostT=0.8; // small momentum reward
-          burst(target.x,2,target.z,0x36e0c2);
+          burst(target.x,2,target.z,0xc8923a);
           if(nextCp>=CP_COUNT){
             // lap complete!
             laps++; nextCp=0;
             cps.forEach(c=>{ c.got=false; c.grp.visible=true; });
             timeLeft=Math.min(timeLeft+8,60);
-            flash('LAP '+laps+'! +8s','#36e0c2');
-            burst(car.x,2,car.z,0xf2c14e);
+            flash('LAP '+laps+'! +8s','#9b3a22');
+            burst(car.x,2,car.z,0x9b3a22);
             $('cp').textContent=0;
           } else {
-            flash('CHECKPOINT +3s','#ffd34d');
+            flash('CHECKPOINT +3s','#c8923a');
           }
           highlightNext();
         }

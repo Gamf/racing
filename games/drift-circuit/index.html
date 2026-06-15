@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#07080c">
+  <meta name="theme-color" content="#efe6d2">
   <title>Drift Circuit — Gamf</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../gamf.css">
   <style>
-    body{ --gx-accent:#f2c14e; margin:0; height:100%; overflow:hidden;
+    body{ --gx-accent:#9b3a22; margin:0; height:100%; overflow:hidden; background:#efe6d2;
       touch-action:none; -webkit-user-select:none; user-select:none; }
     html,body{ height:100%; }
     canvas{display:block;width:100%;height:100%;touch-action:none}
@@ -24,10 +24,10 @@
     .pad:active{transform:scale(.92);background:color-mix(in srgb, var(--gx-accent) 34%, transparent)}
     .pad svg{width:30px;height:30px}
     #padL{left:calc(env(safe-area-inset-left) + 18px)} #padR{left:calc(env(safe-area-inset-left) + 108px)}
-    #padGas{right:calc(env(safe-area-inset-right) + 18px);color:var(--gx-brand-3);
-      background:color-mix(in srgb, var(--gx-brand-3) 16%, transparent);
-      border-color:color-mix(in srgb, var(--gx-brand-3) 45%, var(--gx-line))}
-    #padGas:active{background:color-mix(in srgb, var(--gx-brand-3) 34%, transparent)}
+    #padGas{right:calc(env(safe-area-inset-right) + 18px);color:#6f6a3b;
+      background:color-mix(in srgb, #6f6a3b 16%, transparent);
+      border-color:color-mix(in srgb, #6f6a3b 45%, var(--gx-line))}
+    #padGas:active{background:color-mix(in srgb, #6f6a3b 34%, transparent)}
   </style>
 </head>
 <body class="gx">
@@ -234,13 +234,13 @@
 
       // drift smoke
       if(car.drift>0.05 && car.speed>2){ const bx=car.x-fx*16, by=car.y-fy*16;
-        spawnPart(bx,by,'rgba(180,190,210,0.5)',1,1); }
+        spawnPart(bx,by,'rgba(150,140,120,0.5)',1,1); }
 
       // coins
       for(const c of coins){ if(c.got) continue; c.phase+=dt*4;
         if(Math.hypot(car.x-c.x,car.y-c.y)<26){ c.got=true; coinsGot++;
           document.getElementById('coins').textContent=coinsGot;
-          spawnPart(c.x,c.y,'#f2c14e',14,4); timeLeft=Math.min(timeLeft+1.2,30);
+          spawnPart(c.x,c.y,'#c8923a',14,4); timeLeft=Math.min(timeLeft+1.2,30);
           if(coinsGot>=coinTotal) end(true); } }
 
       // timer
@@ -256,16 +256,8 @@
     let bgT=0;
     function draw(){
       bgT+=0.004;
-      // animated background gradient
-      const g=ctx.createLinearGradient(0,0,0,H);
-      g.addColorStop(0,'#11141f'); g.addColorStop(1,'#0a0c12');
-      ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-      // subtle moving grid glow
-      ctx.save(); ctx.globalAlpha=0.06; ctx.strokeStyle='#6c8cff'; ctx.lineWidth=1;
-      const gs=46, off=(bgT*40)%gs;
-      for(let x=-off;x<W;x+=gs){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
-      for(let y=-off;y<H;y+=gs){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
-      ctx.restore();
+      // clean warm cream background
+      ctx.fillStyle='#efe6d2'; ctx.fillRect(0,0,W,H);
 
       // camera follows car
       ctx.save();
@@ -275,30 +267,27 @@
 
       // ---- track tarmac ----
       ctx.lineJoin='round'; ctx.lineCap='round';
-      // outer glow band
+      // tarmac band (warm brown, flat matte)
       ctx.beginPath(); pathTrack(); ctx.closePath();
-      ctx.strokeStyle='#1c2230'; ctx.lineWidth=TRACK_W*2; ctx.stroke();
-      // edge lines (neon)
-      ctx.save(); ctx.shadowBlur=18; ctx.shadowColor='#6c8cff';
+      ctx.strokeStyle='#4a3b2a'; ctx.lineWidth=TRACK_W*2; ctx.stroke();
+      // ochre kerb edge lines, flat
       ctx.beginPath(); pathTrack(); ctx.closePath();
-      ctx.strokeStyle='rgba(108,140,255,0.85)'; ctx.lineWidth=TRACK_W*2; ctx.globalCompositeOperation='source-over';
-      // draw thin neon edges by stroking a slightly inner & outer offset is complex; instead stroke center dashed line
-      ctx.restore();
-      // center dashed racing line
-      ctx.save(); ctx.shadowBlur=8; ctx.shadowColor='#7fe7c4';
+      ctx.strokeStyle='#c8923a'; ctx.lineWidth=TRACK_W*2-6; ctx.stroke();
+      // inner tarmac fill so kerb reads as a thin border
+      ctx.beginPath(); pathTrack(); ctx.closePath();
+      ctx.strokeStyle='#4a3b2a'; ctx.lineWidth=TRACK_W*2-16; ctx.stroke();
+      // center dashed racing line (olive, no glow)
+      ctx.save();
       ctx.setLineDash([14,18]); ctx.lineDashOffset=-bgT*120;
       ctx.beginPath(); pathTrack(); ctx.closePath();
-      ctx.strokeStyle='rgba(127,231,196,0.45)'; ctx.lineWidth=3; ctx.stroke();
+      ctx.strokeStyle='#6f6a3b'; ctx.lineWidth=3; ctx.stroke();
       ctx.setLineDash([]); ctx.restore();
 
       // ---- coins ----
       for(const c of coins){ if(c.got) continue;
         const r=12+Math.sin(c.phase)*2;
-        ctx.save(); ctx.shadowBlur=16; ctx.shadowColor='#f2c14e';
-        const cg=ctx.createRadialGradient(c.x,c.y,1,c.x,c.y,r);
-        cg.addColorStop(0,'#fff1c0'); cg.addColorStop(1,'#f2a830');
-        ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(c.x,c.y,r,0,6.28); ctx.fill();
-        ctx.restore();
+        ctx.fillStyle='#c8923a'; ctx.beginPath(); ctx.arc(c.x,c.y,r,0,6.28); ctx.fill();
+        ctx.fillStyle='#a4623a'; ctx.beginPath(); ctx.arc(c.x,c.y,r*0.5,0,6.28); ctx.fill();
       }
 
       // ---- particles ----
@@ -306,28 +295,24 @@
         ctx.fillStyle=p.col; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*p.life,0,6.28); ctx.fill(); }
       ctx.globalAlpha=1;
 
-      // ---- car ----
+      // ---- car ---- (oxblood, the single accent; flat matte)
       ctx.save();
       ctx.translate(car.x,car.y); ctx.rotate(car.a);
       // soft drop shadow
-      ctx.fillStyle='rgba(0,0,0,0.4)'; roundRect(-14,-6,32,18,5);
-      // body with gradient + glow
-      ctx.shadowBlur=14; ctx.shadowColor='#f2c14e';
-      const bg=ctx.createLinearGradient(-16,0,16,0); bg.addColorStop(0,'#f2c14e'); bg.addColorStop(1,'#f0a020');
-      ctx.fillStyle=bg; roundRect(-16,-9,32,18,5);
-      ctx.shadowBlur=0;
-      // cabin
-      ctx.fillStyle='#10131f'; roundRect(-4,-6,12,12,3);
-      // tail light glow
-      ctx.shadowBlur=10; ctx.shadowColor='#e0556b'; ctx.fillStyle='#e0556b'; roundRect(-16,-7,3,14,2);
-      ctx.shadowBlur=0;
+      ctx.fillStyle='rgba(34,31,23,0.25)'; roundRect(-14,-6,32,18,5);
+      // body, oxblood flat fill
+      ctx.fillStyle='#9b3a22'; roundRect(-16,-9,32,18,5);
+      // cabin (warm ink)
+      ctx.fillStyle='#221f17'; roundRect(-4,-6,12,12,3);
+      // tail marker (clay, flat)
+      ctx.fillStyle='#a4623a'; roundRect(-16,-7,3,14,2);
       ctx.restore();
 
       ctx.restore();
 
       // pause overlay
-      if(paused){ ctx.fillStyle='rgba(8,9,13,0.6)'; ctx.fillRect(0,0,W,H);
-        ctx.fillStyle='#9fb4ff'; ctx.font='700 28px system-ui'; ctx.textAlign='center';
+      if(paused){ ctx.fillStyle='rgba(42,33,24,0.55)'; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle='#efe6d2'; ctx.font='700 28px system-ui'; ctx.textAlign='center';
         ctx.fillText('Paused — P to resume', W/2, H/2); ctx.textAlign='left'; }
     }
     function pathTrack(){ ctx.moveTo(trackPts[0].x,trackPts[0].y);

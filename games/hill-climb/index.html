@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#15110e">
+  <meta name="theme-color" content="#efe6d2">
   <title>Hill Climb — Gamf</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../gamf.css">
   <style>
-    body{ --gx-accent:#f2c14e; margin:0; height:100%; overflow:hidden;
+    body{ --gx-accent:#9b3a22; background:#efe6d2; margin:0; height:100%; overflow:hidden;
       touch-action:none; -webkit-user-select:none; user-select:none; }
     html,body{ height:100%; }
     canvas{display:block;width:100%;height:100%;touch-action:none}
@@ -19,18 +19,18 @@
     .pad{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 56px);width:88px;height:88px;border-radius:50%;
       display:grid;place-items:center;pointer-events:auto;color:var(--gx-text);
       font-family:var(--gx-font-body);font-weight:800;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
-      background:color-mix(in srgb, var(--gx-amber) 16%, transparent);
-      border:1px solid color-mix(in srgb, var(--gx-amber) 45%, var(--gx-line));
+      background:color-mix(in srgb, #c8923a 16%, transparent);
+      border:1px solid color-mix(in srgb, #c8923a 45%, var(--gx-line));
       backdrop-filter:blur(6px);transition:transform .1s, background .12s}
     .pad:active{transform:scale(.92)}
     .pad svg{width:30px;height:30px}
     .pad small{position:absolute;bottom:14px;opacity:.85}
-    #padBrake{left:calc(env(safe-area-inset-left) + 18px);color:var(--gx-red);
-      background:color-mix(in srgb, var(--gx-red) 16%, transparent);
-      border-color:color-mix(in srgb, var(--gx-red) 45%, var(--gx-line))}
-    #padBrake:active{background:color-mix(in srgb, var(--gx-red) 34%, transparent)}
-    #padGas{right:calc(env(safe-area-inset-right) + 18px);color:var(--gx-amber)}
-    #padGas:active{background:color-mix(in srgb, var(--gx-amber) 34%, transparent)}
+    #padBrake{left:calc(env(safe-area-inset-left) + 18px);color:#9b3a22;
+      background:color-mix(in srgb, #9b3a22 16%, transparent);
+      border-color:color-mix(in srgb, #9b3a22 45%, var(--gx-line))}
+    #padBrake:active{background:color-mix(in srgb, #9b3a22 34%, transparent)}
+    #padGas{right:calc(env(safe-area-inset-right) + 18px);color:#c8923a}
+    #padGas:active{background:color-mix(in srgb, #c8923a 34%, transparent)}
   </style>
 </head>
 <body class="gx">
@@ -297,7 +297,7 @@
         const py=ground(p.x)-26;
         if(Math.abs(car.x-p.x)<28 && Math.abs(car.y-py)<46){
           p.got=true; fuel=Math.min(100, fuel+34);
-          spawnPart(p.x,py,'#e8a23a',16,4);
+          spawnPart(p.x,py,'#c8923a',16,4);
         }
       }
 
@@ -316,25 +316,20 @@
     // ---- render ----
     let camX=0, camY=0;
     function draw(){
-      // sky
-      const sky=ctx.createLinearGradient(0,0,0,H);
-      sky.addColorStop(0,'#1d1611'); sky.addColorStop(0.55,'#15110e'); sky.addColorStop(1,'#0f0b08');
-      ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+      // sky — warm flat cream
+      ctx.fillStyle='#efe6d2'; ctx.fillRect(0,0,W,H);
 
       // camera follows the car, biased so the car sits left-of-centre
       const tx=car.x - W*0.34, ty=car.y - H*0.52;
       camX += (tx-camX)*0.12; camY += (ty-camY)*0.10;
 
-      // distant amber sun + parallax ridge
+      // flat printed sun disc + parallax ridges (matte earth tones, no glow)
       ctx.save();
-      ctx.globalAlpha=0.5;
       const sunX=W*0.74, sunY=H*0.24;
-      const sg=ctx.createRadialGradient(sunX,sunY,4,sunX,sunY,90);
-      sg.addColorStop(0,'rgba(232,162,58,0.5)'); sg.addColorStop(1,'rgba(232,162,58,0)');
-      ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(sunX,sunY,90,0,6.28); ctx.fill();
+      ctx.fillStyle='#c8923a'; ctx.beginPath(); ctx.arc(sunX,sunY,46,0,6.28); ctx.fill();
       ctx.restore();
-      drawRidge(camX*0.25, H*0.62, 0.18, '#241a13', 0.5);
-      drawRidge(camX*0.45, H*0.70, 0.30, '#2c2016', 0.8);
+      drawRidge(camX*0.25, H*0.62, 0.18, '#a4623a', 0.45);
+      drawRidge(camX*0.45, H*0.70, 0.30, '#6f6a3b', 0.7);
 
       ctx.save();
       ctx.translate(-camX,-camY);
@@ -348,24 +343,23 @@
       ctx.lineTo(right, ground(right));
       ctx.lineTo(right, camY+H+80);
       ctx.closePath();
-      const tg=ctx.createLinearGradient(0,camY,0,camY+H);
-      tg.addColorStop(0,'#3a2a1c'); tg.addColorStop(1,'#22180f');
-      ctx.fillStyle=tg; ctx.fill();
-      // grass/edge line on top of terrain
+      // flat matte earth fill (no gradient/glow)
+      ctx.fillStyle='#6f6a3b'; ctx.fill();
+      // edge line on top of terrain — oxblood accent
       ctx.beginPath();
       ctx.moveTo(left, ground(left));
       for(let x=left;x<=right;x+=step){ ctx.lineTo(x, ground(x)); }
-      ctx.lineWidth=4; ctx.strokeStyle='#d8412b'; ctx.lineJoin='round'; ctx.stroke();
-      ctx.lineWidth=2; ctx.strokeStyle='#e8a23a'; ctx.stroke();
+      ctx.lineWidth=4; ctx.strokeStyle='#9b3a22'; ctx.lineJoin='round'; ctx.stroke();
+      ctx.lineWidth=2; ctx.strokeStyle='#c8923a'; ctx.stroke();
 
       // distance markers every 100m
       ctx.font='700 11px "Space Mono", monospace'; ctx.textAlign='center';
       for(let m=100; m<=Math.ceil(dist/100)*100+200; m+=100){
         const mx=80+m*SCALE; if(mx<left||mx>right) continue;
         const gy=ground(mx);
-        ctx.strokeStyle='rgba(244,237,225,0.25)'; ctx.lineWidth=2;
+        ctx.strokeStyle='rgba(34,31,23,0.30)'; ctx.lineWidth=2;
         ctx.beginPath(); ctx.moveTo(mx,gy); ctx.lineTo(mx,gy-30); ctx.stroke();
-        ctx.fillStyle='rgba(244,237,225,0.5)'; ctx.fillText(m+'m', mx, gy-36);
+        ctx.fillStyle='rgba(34,31,23,0.55)'; ctx.fillText(m+'m', mx, gy-36);
       }
       ctx.textAlign='left';
 
@@ -375,11 +369,11 @@
         const py=ground(p.x)-26 + Math.sin(p.bob)*3;
         ctx.save(); ctx.translate(p.x,py);
         // jerry can
-        ctx.fillStyle='#e8a23a';
+        ctx.fillStyle='#c8923a';
         roundRect(-9,-11,18,22,3);
-        ctx.fillStyle='#15110e'; ctx.font='700 10px "Space Mono", monospace'; ctx.textAlign='center';
+        ctx.fillStyle='#221f17'; ctx.font='700 10px "Space Mono", monospace'; ctx.textAlign='center';
         ctx.fillText('F', 0, 4);
-        ctx.fillStyle='#d8412b'; ctx.fillRect(-3,-15,6,4); // spout
+        ctx.fillStyle='#4a3b2a'; ctx.fillRect(-3,-15,6,4); // spout
         ctx.textAlign='left';
         ctx.restore();
       }
@@ -394,19 +388,19 @@
 
       ctx.restore();
 
-      // low-fuel vignette warning
+      // low-fuel edge warning — oxblood, flat vignette (gameplay feedback, no glow)
       if(running && fuel<25){
-        ctx.save(); ctx.globalAlpha=(0.18)*(1-fuel/25);
-        const vg=ctx.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.75);
-        vg.addColorStop(0,'rgba(216,65,43,0)'); vg.addColorStop(1,'rgba(216,65,43,1)');
+        ctx.save(); ctx.globalAlpha=(0.16)*(1-fuel/25);
+        const vg=ctx.createRadialGradient(W/2,H/2,H*0.35,W/2,H/2,H*0.78);
+        vg.addColorStop(0,'rgba(155,58,34,0)'); vg.addColorStop(1,'rgba(155,58,34,1)');
         ctx.fillStyle=vg; ctx.fillRect(0,0,W,H); ctx.restore();
       }
 
       if(paused){
-        ctx.fillStyle='rgba(10,8,6,0.66)'; ctx.fillRect(0,0,W,H);
-        ctx.fillStyle='#f4ede1'; ctx.font='400 30px Anton, sans-serif'; ctx.textAlign='center';
+        ctx.fillStyle='rgba(42,33,24,0.55)'; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle='#efe6d2'; ctx.font='400 30px Anton, sans-serif'; ctx.textAlign='center';
         ctx.fillText('PAUSED', W/2, H/2-6);
-        ctx.fillStyle='#b3a48f'; ctx.font='400 13px "Space Mono", monospace';
+        ctx.fillStyle='#c8923a'; ctx.font='400 13px "Space Mono", monospace';
         ctx.fillText('P TO RESUME', W/2, H/2+22); ctx.textAlign='left';
       }
     }
@@ -429,33 +423,31 @@
       // chassis
       ctx.save();
       ctx.translate(car.x,car.y); ctx.rotate(car.a);
-      // shadow body
-      ctx.fillStyle='rgba(0,0,0,0.35)';
+      // soft contact shadow (warm, low-contrast — not a glow)
+      ctx.fillStyle='rgba(34,31,23,0.22)';
       roundRect(-WHEEL_BASE*0.5-3, -CHASSIS_H*0.5+3, WHEEL_BASE+6, CHASSIS_H, 6);
-      // main body
-      const bg=ctx.createLinearGradient(0,-CHASSIS_H*0.5,0,CHASSIS_H*0.5);
-      bg.addColorStop(0,'#e8533a'); bg.addColorStop(1,'#d8412b');
-      ctx.fillStyle=bg;
+      // main body — oxblood accent, flat matte ink
+      ctx.fillStyle='#9b3a22';
       roundRect(-WHEEL_BASE*0.5-3, -CHASSIS_H*0.5, WHEEL_BASE+6, CHASSIS_H, 6);
       // cabin
-      ctx.fillStyle='#15110e';
+      ctx.fillStyle='#4a3b2a';
       roundRect(-6, -CHASSIS_H*0.5-9, 20, 12, 4);
       // window
-      ctx.fillStyle='#e8a23a';
+      ctx.fillStyle='#c8923a';
       roundRect(-3, -CHASSIS_H*0.5-7, 14, 7, 2);
       // bumper accent
-      ctx.fillStyle='#f4ede1';
+      ctx.fillStyle='#efe6d2';
       ctx.fillRect(WHEEL_BASE*0.5-1, -3, 4, 6);
       ctx.restore();
     }
     function drawWheel(x,y){
       ctx.save(); ctx.translate(x,y); ctx.rotate(car.wRot);
       // tyre
-      ctx.fillStyle='#0f0b08'; ctx.beginPath(); ctx.arc(0,0,WHEEL_R,0,6.28); ctx.fill();
-      ctx.strokeStyle='#2c2016'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0,0,WHEEL_R-1,0,6.28); ctx.stroke();
+      ctx.fillStyle='#221f17'; ctx.beginPath(); ctx.arc(0,0,WHEEL_R,0,6.28); ctx.fill();
+      ctx.strokeStyle='#4a3b2a'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0,0,WHEEL_R-1,0,6.28); ctx.stroke();
       // hub + spokes
-      ctx.fillStyle='#e8a23a'; ctx.beginPath(); ctx.arc(0,0,WHEEL_R*0.42,0,6.28); ctx.fill();
-      ctx.strokeStyle='#15110e'; ctx.lineWidth=2;
+      ctx.fillStyle='#c8923a'; ctx.beginPath(); ctx.arc(0,0,WHEEL_R*0.42,0,6.28); ctx.fill();
+      ctx.strokeStyle='#221f17'; ctx.lineWidth=2;
       for(let i=0;i<4;i++){ const a=i/4*Math.PI*2; ctx.beginPath();
         ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*WHEEL_R*0.4, Math.sin(a)*WHEEL_R*0.4); ctx.stroke(); }
       ctx.restore();

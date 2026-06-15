@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#15110e">
+  <meta name="theme-color" content="#3a2c20">
   <title>Slalom — Gamf</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../gamf.css">
   <style>
-    /* genre accent: racing amber */
-    body{ --gx-accent:#e8a23a; margin:0; height:100%; overflow:hidden;
+    /* genre accent: warm oxblood */
+    body{ --gx-accent:#9b3a22; margin:0; height:100%; overflow:hidden;
       touch-action:none; -webkit-user-select:none; user-select:none; }
     html,body{ height:100%; }
     canvas{ display:block; width:100%; height:100%; touch-action:none; }
@@ -31,8 +31,8 @@
     .flash{ position:fixed; left:0; right:0; top:32%; z-index:5; text-align:center;
       pointer-events:none; font-family:var(--gx-font-display); font-weight:400;
       letter-spacing:1px; text-transform:uppercase;
-      font-size:clamp(1.7rem,8vw,2.8rem); color:var(--gx-amber);
-      text-shadow:3px 3px 0 var(--gx-ink);
+      font-size:clamp(1.7rem,8vw,2.8rem); color:#9b3a22;
+      text-shadow:2px 2px 0 var(--gx-ink);
       opacity:0; transition:opacity .2s, transform .2s; transform:translateY(8px) scale(.96); }
     .flash.show{ opacity:1; transform:translateY(0) scale(1); }
   </style>
@@ -107,9 +107,16 @@
     let seed=20260613;
     const rnd=()=> (seed=(seed*1103515245+12345)&0x7fffffff)/0x7fffffff;
 
-    // ---------- palette ----------
-    const COL_BG=0x15110e, COL_RED=0xd8412b, COL_AMBER=0xe8a23a, COL_BONE=0xf4ede1;
-    const COL_SNOW=0xe7ddcb, COL_SNOW2=0xcdbfa8;
+    // ---------- palette (warm GAMF Quarterly: cream / oxblood / earth tones) ----------
+    const COL_BG=0x3a2c20;        // warm dusk sky
+    const COL_OXBLOOD=0x9b3a22;   // the one accent
+    const COL_OCHRE=0xc8923a, COL_OLIVE=0x6f6a3b, COL_CLAY=0xa4623a;
+    const COL_BROWN=0x4a3b2a, COL_INK=0x221f17, COL_CREAM=0xefe6d2;
+    // course-element aliases (keep names used downstream)
+    const COL_RED=COL_OXBLOOD;    // gate / edge accent
+    const COL_AMBER=COL_OCHRE;    // supporting warm tone
+    const COL_BONE=COL_CREAM;
+    const COL_SNOW=0xe9dcc0, COL_SNOW2=0xcdbfa8;
 
     // ---------- renderer / scene ----------
     const renderer=new THREE.WebGLRenderer({antialias:true});
@@ -119,18 +126,17 @@
 
     const scene=new THREE.Scene();
     scene.background=new THREE.Color(COL_BG);
-    scene.fog=new THREE.Fog(COL_BG, 90, 300);
+    scene.fog=new THREE.Fog(COL_BG, 120, 360);   // subtle, warm-matched
 
     const camera=new THREE.PerspectiveCamera(60,1,0.1,700);
 
-    // lights
-    scene.add(new THREE.HemisphereLight(0xfff1d8,0x2a1c12,0.85));
-    const dl=new THREE.DirectionalLight(0xfff0d6,1.05); dl.position.set(-50,90,40);
+    // lights: single warm directional + soft warm hemisphere (no neon point-lights)
+    scene.add(new THREE.HemisphereLight(0xf3e4c4,0x3a2c20,0.85));
+    const dl=new THREE.DirectionalLight(0xffe9c4,1.05); dl.position.set(-50,90,40);
     dl.castShadow=true; dl.shadow.mapSize.set(2048,2048);
     dl.shadow.camera.near=10; dl.shadow.camera.far=420;
     dl.shadow.camera.left=-120; dl.shadow.camera.right=120; dl.shadow.camera.top=200; dl.shadow.camera.bottom=-200;
     scene.add(dl);
-    const accent=new THREE.PointLight(COL_AMBER,0.9,90); accent.position.set(0,18,0); scene.add(accent);
 
     // ---------- slope geometry ----------
     // The course runs downhill along +Z. The skier descends in +Z forever.
@@ -146,8 +152,8 @@
     snow.rotation.x=-Math.PI/2 + Math.atan(PITCH); // tilt to match slope pitch
     snow.receiveShadow=true; scene.add(snow);
 
-    // course edge banners (red flags marking the out-of-bounds margins)
-    const edgeMat=new THREE.MeshStandardMaterial({color:COL_RED, emissive:0x5a160d, emissiveIntensity:0.6, roughness:0.7});
+    // course edge banners (oxblood markers for the out-of-bounds margins)
+    const edgeMat=new THREE.MeshStandardMaterial({color:COL_OXBLOOD, roughness:0.85});
     const edges=[];
     for(const side of [1,-1]){
       for(let i=0;i<60;i++){
@@ -156,8 +162,8 @@
       }
     }
 
-    // dashed center line (amber ticks) running down the fall line
-    const tickMat=new THREE.MeshStandardMaterial({color:COL_AMBER, emissive:0x4a3008, emissiveIntensity:0.5, roughness:0.6});
+    // dashed center line (ochre ticks) running down the fall line
+    const tickMat=new THREE.MeshStandardMaterial({color:COL_OCHRE, roughness:0.85});
     const ticks=[];
     for(let i=0;i<40;i++){
       const t=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.2,4.5), tickMat);
@@ -165,9 +171,9 @@
     }
 
     // pine trees scattered outside the course (deterministic placement, recycled)
-    const trunkMat=new THREE.MeshStandardMaterial({color:0x4a3826, roughness:0.9});
-    const pineMat=new THREE.MeshStandardMaterial({color:0x2a4a32, roughness:0.85});
-    const pineMat2=new THREE.MeshStandardMaterial({color:0x223a28, roughness:0.85});
+    const trunkMat=new THREE.MeshStandardMaterial({color:COL_BROWN, roughness:0.9});
+    const pineMat=new THREE.MeshStandardMaterial({color:COL_OLIVE, roughness:0.9});
+    const pineMat2=new THREE.MeshStandardMaterial({color:0x585733, roughness:0.9});
     const trees=[];
     for(let i=0;i<46;i++){
       const g=new THREE.Group();
@@ -188,17 +194,17 @@
     const NUM_GATES=14;        // pooled gate objects, recycled forward
     const POLE_H=5.5;
     const gates=[];
+    // gate pairs alternate between two warm earth tones: oxblood and ochre
     function makePole(red){
       const g=new THREE.Group();
       const mat=new THREE.MeshStandardMaterial({
-        color: red?COL_RED:0x4ea3d8,
-        emissive: red?0x4a1006:0x0e2c3c, emissiveIntensity:0.7, roughness:0.5});
+        color: red?COL_OXBLOOD:COL_OCHRE, roughness:0.8});
       const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.35,POLE_H,10), mat);
       pole.position.y=POLE_H/2; pole.castShadow=true; g.add(pole);
       // little flag panel near the top
       const flag=new THREE.Mesh(new THREE.PlaneGeometry(2.6,1.6),
-        new THREE.MeshStandardMaterial({color: red?COL_RED:0x4ea3d8, side:THREE.DoubleSide,
-          emissive: red?0x6a1a0c:0x123446, emissiveIntensity:0.8, roughness:0.6}));
+        new THREE.MeshStandardMaterial({color: red?COL_OXBLOOD:COL_OCHRE, side:THREE.DoubleSide,
+          roughness:0.8}));
       flag.position.set(1.3, POLE_H-1.1, 0); g.add(flag);
       g.userData.mat=mat; g.userData.flag=flag.material;
       return g;
@@ -213,38 +219,38 @@
     // ---------- skier (player) ----------
     const skier=new THREE.Group();
     // skis
-    const skiMat=new THREE.MeshStandardMaterial({color:COL_RED, metalness:0.3, roughness:0.4});
+    const skiMat=new THREE.MeshStandardMaterial({color:COL_OXBLOOD, metalness:0.0, roughness:0.8});
     for(const sx of [-0.7,0.7]){
       const ski=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.18,3.4), skiMat);
       ski.position.set(sx,-0.05,0.2); ski.castShadow=true; skier.add(ski);
     }
     // boots/legs
-    const legMat=new THREE.MeshStandardMaterial({color:0x1b1410, roughness:0.7});
+    const legMat=new THREE.MeshStandardMaterial({color:COL_INK, roughness:0.85});
     for(const sx of [-0.7,0.7]){
       const leg=new THREE.Mesh(new THREE.BoxGeometry(0.7,1.4,0.8), legMat);
       leg.position.set(sx,0.85,0); leg.castShadow=true; skier.add(leg);
     }
     // torso
     const torso=new THREE.Mesh(new THREE.BoxGeometry(1.9,1.7,1.1),
-      new THREE.MeshStandardMaterial({color:COL_AMBER, metalness:0.2, roughness:0.5}));
+      new THREE.MeshStandardMaterial({color:COL_CLAY, metalness:0.0, roughness:0.8}));
     torso.position.y=2.3; torso.castShadow=true; skier.add(torso);
     // backpack racing bib detail
     const bib=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.0,0.2),
-      new THREE.MeshStandardMaterial({color:COL_BONE, emissive:0x2a2620, emissiveIntensity:0.3, roughness:0.5}));
+      new THREE.MeshStandardMaterial({color:COL_CREAM, roughness:0.85}));
     bib.position.set(0,2.4,0.58); skier.add(bib);
     // head/helmet
     const head=new THREE.Mesh(new THREE.SphereGeometry(0.62,14,12),
-      new THREE.MeshStandardMaterial({color:0x100c09, metalness:0.4, roughness:0.3}));
+      new THREE.MeshStandardMaterial({color:COL_INK, metalness:0.0, roughness:0.7}));
     head.position.y=3.5; head.castShadow=true; skier.add(head);
-    // goggles
+    // goggles (matte ochre, no glow)
     const gog=new THREE.Mesh(new THREE.BoxGeometry(1.05,0.34,0.2),
-      new THREE.MeshStandardMaterial({color:COL_AMBER, emissive:COL_AMBER, emissiveIntensity:1.2}));
+      new THREE.MeshStandardMaterial({color:COL_OCHRE, roughness:0.7}));
     gog.position.set(0,3.55,0.5); skier.add(gog);
     scene.add(skier);
 
-    // ---------- snow spray particles ----------
+    // ---------- snow spray particles (matte, gameplay feedback — no glow) ----------
     const sprays=[]; const sprayGeo=new THREE.SphereGeometry(0.28,6,6);
-    const sprayMat=new THREE.MeshStandardMaterial({color:COL_BONE, emissive:0x3a342a, emissiveIntensity:0.4, roughness:0.9});
+    const sprayMat=new THREE.MeshStandardMaterial({color:COL_CREAM, roughness:0.95});
     for(let i=0;i<60;i++){
       const s=new THREE.Mesh(sprayGeo, sprayMat.clone());
       s.visible=false; scene.add(s); sprays.push({m:s,vx:0,vy:0,vz:0,life:0});
@@ -252,8 +258,7 @@
     function spray(x,y,z,col,n){ let made=0;
       for(const p of sprays){ if(p.life>0) continue;
         p.m.position.set(x+(rnd()-0.5)*1.2,y,z+(rnd()-0.5)*1.2);
-        if(col){ p.m.material.color.set(col); p.m.material.emissive.set(col); }
-        else { p.m.material.color.set(COL_SNOW); p.m.material.emissive.set(0x3a342a); }
+        p.m.material.color.set(col||COL_SNOW);
         p.m.visible=true; p.vx=(rnd()-0.5)*0.9; p.vy=rnd()*0.7+0.2; p.vz=(rnd()-0.5)*0.9+0.4; p.life=1;
         if(++made>=(n||10)) break; }
     }
@@ -280,13 +285,12 @@
       // first gate sits a runway ahead so the start line isn't auto-triggered
       g.cx=cx; g.half=half; g.z=GATE_START + ordinal*GATE_SPACING;
       g.passed=false; g.missed=false; g.scored=false;
-      // recolor poles
-      const colMat = g.red?COL_RED:0x4ea3d8;
-      const colEm  = g.red?0x4a1006:0x0e2c3c;
-      g.left.userData.mat.color.set(colMat); g.left.userData.mat.emissive.set(colEm);
-      g.left.userData.flag.color.set(colMat); g.left.userData.flag.emissive.set(g.red?0x6a1a0c:0x123446);
-      g.right.userData.mat.color.set(colMat); g.right.userData.mat.emissive.set(colEm);
-      g.right.userData.flag.color.set(colMat); g.right.userData.flag.emissive.set(g.red?0x6a1a0c:0x123446);
+      // recolor poles between the two warm gate tones
+      const colMat = g.red?COL_OXBLOOD:COL_OCHRE;
+      g.left.userData.mat.color.set(colMat);
+      g.left.userData.flag.color.set(colMat);
+      g.right.userData.mat.color.set(colMat);
+      g.right.userData.flag.color.set(colMat);
     }
 
     function reset(){
@@ -305,7 +309,7 @@
     }
 
     function flash(msg,col){
-      const f=$('flash'); f.textContent=msg; f.style.color=col||'#e8a23a';
+      const f=$('flash'); f.textContent=msg; f.style.color=col||'#9b3a22';
       f.classList.add('show'); flash._until=tNow+0.9;
     }
     flash._until=0;
@@ -431,12 +435,12 @@
             timeLeft=Math.min(timeLeft+1.2, 45);   // small reward
             spray(g.cx, groundY(g.z)+2.5, g.z, COL_AMBER, 14);
             $('gates').textContent=gatesCleared;
-            if(gatesCleared%5===0) flash('+'+gatesCleared+' GATES','#e8a23a');
+            if(gatesCleared%5===0) flash('+'+gatesCleared+' GATES','#c8923a');
           } else {
             gatesMissed++; g.missed=true;
             timeLeft=Math.max(0, timeLeft-2.5);     // miss penalty
-            spray(skierX, groundY(progress)+1.5, progress, COL_RED, 12);
-            flash('MISSED  -2.5s','#d8412b');
+            spray(skierX, groundY(progress)+1.5, progress, COL_OXBLOOD, 12);
+            flash('MISSED  -2.5s','#9b3a22');
           }
         }
       }
@@ -459,8 +463,6 @@
 
     // ---------- render world objects relative to skier ----------
     function syncWorld(){
-      const py=groundY(progress);
-
       // skier sits on slope; lean roll into the carve
       skier.position.set(skierX, groundY(progress)+0.1, progress);
       skier.rotation.z = -lean*0.5;
@@ -475,12 +477,11 @@
         const passed = g.passed;
         g.left.position.set(g.cx - g.half, gy, g.z);
         g.right.position.set(g.cx + g.half, gy, g.z);
-        // visual feedback: scored gates fade to bone, missed gates dim to red
-        const sc=1;
-        g.left.scale.setScalar(sc); g.right.scale.setScalar(sc);
-        const em = g.scored?1.4 : (g.missed?0.15 : 0.7);
-        g.left.userData.mat.emissiveIntensity=em;
-        g.right.userData.mat.emissiveIntensity=em;
+        // matte feedback: missed gates dim toward warm brown (no glow)
+        const base = g.red?COL_OXBLOOD:COL_OCHRE;
+        const col = g.missed?COL_BROWN : base;
+        g.left.userData.mat.color.set(col);
+        g.right.userData.mat.color.set(col);
       }
 
       // amber center ticks marching down the fall line
@@ -503,8 +504,6 @@
         z = tr.z0 - Math.floor((tr.z0 - (progress-60))/SLOPE_LEN)*SLOPE_LEN;
         tr.g.position.set(tr.side*tr.lane, groundY(z), z);
       }
-
-      accent.position.set(skierX, py+22, progress+8);
     }
 
     // ---------- render frame ----------
