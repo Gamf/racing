@@ -90,16 +90,22 @@
     let seed=20260613;
     const rnd=()=> (seed=(seed*1103515245+12345)&0x7fffffff)/0x7fffffff;
 
-    // ---------- palette (warm GAMF Quarterly: cream / oxblood / earth tones) ----------
-    const COL_BG=0x3a2c20;        // warm dusk sky
-    const COL_OXBLOOD=0x9b3a22;   // the one accent
+    // ---------- palette ----------
+    // Recognisable SLALOM signature: a clean bright snow slope under a calm
+    // alpine sky, with gates that ALTERNATE RED & BLUE — the universal ski-race
+    // marker colours every player reads as "slalom" at a glance. Surrounding
+    // furniture (skier, trees, sky) stays in the calm warm/neutral editorial range.
+    const COL_BG=0x9fb6c4;        // calm matte alpine sky (cool blue-grey)
+    const COL_OXBLOOD=0x9b3a22;   // warm accent (skier)
     const COL_OCHRE=0xc8923a, COL_OLIVE=0x6f6a3b, COL_CLAY=0xa4623a;
     const COL_BROWN=0x4a3b2a, COL_INK=0x221f17, COL_CREAM=0xefe6d2;
+    // iconic slalom gate colours
+    const COL_GATE_RED=0xc23a2a, COL_GATE_BLUE=0x2f5fa6;
     // course-element aliases (keep names used downstream)
-    const COL_RED=COL_OXBLOOD;    // gate / edge accent
+    const COL_RED=COL_GATE_RED;   // gate / edge accent
     const COL_AMBER=COL_OCHRE;    // supporting warm tone
     const COL_BONE=COL_CREAM;
-    const COL_SNOW=0xe9dcc0, COL_SNOW2=0xcdbfa8;
+    const COL_SNOW=0xf2f5f7, COL_SNOW2=0xdfe6ea;  // bright matte snow
 
     // ---------- renderer / scene ----------
     const renderer=new THREE.WebGLRenderer({antialias:true});
@@ -109,13 +115,13 @@
 
     const scene=new THREE.Scene();
     scene.background=new THREE.Color(COL_BG);
-    scene.fog=new THREE.Fog(COL_BG, 120, 360);   // subtle, warm-matched
+    scene.fog=new THREE.Fog(COL_BG, 140, 380);   // subtle, sky-matched alpine haze
 
     const camera=new THREE.PerspectiveCamera(60,1,0.1,700);
 
-    // lights: single warm directional + soft warm hemisphere (no neon point-lights)
-    scene.add(new THREE.HemisphereLight(0xf3e4c4,0x3a2c20,0.85));
-    const dl=new THREE.DirectionalLight(0xffe9c4,1.05); dl.position.set(-50,90,40);
+    // lights: single soft daylight directional + cool-sky hemisphere (no neon point-lights)
+    scene.add(new THREE.HemisphereLight(0xeef3f6,0xbcc8cf,0.9));
+    const dl=new THREE.DirectionalLight(0xfff4dc,1.0); dl.position.set(-50,90,40);
     dl.castShadow=true; dl.shadow.mapSize.set(2048,2048);
     dl.shadow.camera.near=10; dl.shadow.camera.far=420;
     dl.shadow.camera.left=-120; dl.shadow.camera.right=120; dl.shadow.camera.top=200; dl.shadow.camera.bottom=-200;
@@ -135,8 +141,9 @@
     snow.rotation.x=-Math.PI/2 + Math.atan(PITCH); // tilt to match slope pitch
     snow.receiveShadow=true; scene.add(snow);
 
-    // course edge banners (oxblood markers for the out-of-bounds margins)
-    const edgeMat=new THREE.MeshStandardMaterial({color:COL_OXBLOOD, roughness:0.85});
+    // course edge banners (muted ochre markers for the out-of-bounds margins,
+    // kept secondary so the red/blue gates stay the dominant slalom signal)
+    const edgeMat=new THREE.MeshStandardMaterial({color:COL_OCHRE, roughness:0.85});
     const edges=[];
     for(const side of [1,-1]){
       for(let i=0;i<60;i++){
@@ -177,16 +184,16 @@
     const NUM_GATES=14;        // pooled gate objects, recycled forward
     const POLE_H=5.5;
     const gates=[];
-    // gate pairs alternate between two warm earth tones: oxblood and ochre
+    // gate pairs alternate RED / BLUE — the iconic slalom marker colours
     function makePole(red){
       const g=new THREE.Group();
       const mat=new THREE.MeshStandardMaterial({
-        color: red?COL_OXBLOOD:COL_OCHRE, roughness:0.8});
+        color: red?COL_GATE_RED:COL_GATE_BLUE, roughness:0.8});
       const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.35,POLE_H,10), mat);
       pole.position.y=POLE_H/2; pole.castShadow=true; g.add(pole);
       // little flag panel near the top
       const flag=new THREE.Mesh(new THREE.PlaneGeometry(2.6,1.6),
-        new THREE.MeshStandardMaterial({color: red?COL_OXBLOOD:COL_OCHRE, side:THREE.DoubleSide,
+        new THREE.MeshStandardMaterial({color: red?COL_GATE_RED:COL_GATE_BLUE, side:THREE.DoubleSide,
           roughness:0.8}));
       flag.position.set(1.3, POLE_H-1.1, 0); g.add(flag);
       g.userData.mat=mat; g.userData.flag=flag.material;
@@ -241,7 +248,7 @@
     function spray(x,y,z,col,n){ let made=0;
       for(const p of sprays){ if(p.life>0) continue;
         p.m.position.set(x+(rnd()-0.5)*1.2,y,z+(rnd()-0.5)*1.2);
-        p.m.material.color.set(col||COL_SNOW);
+        p.m.material.color.set(col||COL_SNOW2);
         p.m.visible=true; p.vx=(rnd()-0.5)*0.9; p.vy=rnd()*0.7+0.2; p.vz=(rnd()-0.5)*0.9+0.4; p.life=1;
         if(++made>=(n||10)) break; }
     }
@@ -268,8 +275,8 @@
       // first gate sits a runway ahead so the start line isn't auto-triggered
       g.cx=cx; g.half=half; g.z=GATE_START + ordinal*GATE_SPACING;
       g.passed=false; g.missed=false; g.scored=false;
-      // recolor poles between the two warm gate tones
-      const colMat = g.red?COL_OXBLOOD:COL_OCHRE;
+      // recolor poles between the two iconic slalom tones (red / blue)
+      const colMat = g.red?COL_GATE_RED:COL_GATE_BLUE;
       g.left.userData.mat.color.set(colMat);
       g.left.userData.flag.color.set(colMat);
       g.right.userData.mat.color.set(colMat);
@@ -474,7 +481,7 @@
         g.left.position.set(g.cx - g.half, gy, g.z);
         g.right.position.set(g.cx + g.half, gy, g.z);
         // matte feedback: missed gates dim toward warm brown (no glow)
-        const base = g.red?COL_OXBLOOD:COL_OCHRE;
+        const base = g.red?COL_GATE_RED:COL_GATE_BLUE;
         const col = g.missed?COL_BROWN : base;
         g.left.userData.mat.color.set(col);
         g.right.userData.mat.color.set(col);

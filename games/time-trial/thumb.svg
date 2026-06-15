@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="320" height="200">
+  <!-- sky -->
+  <rect width="320" height="200" fill="#f3ece0"/>
+  <!-- grass roadside -->
+  <rect y="118" width="320" height="82" fill="#6f6a3b"/>
+  <!-- asphalt road sweeping toward a vanishing point -->
+  <polygon points="118,118 202,118 300,200 20,200" fill="#221f17"/>
+  <!-- red-and-white kerb stripes, left edge -->
+  <polygon points="108,118 118,118 20,200 -8,200" fill="#9b3a22"/>
+  <polygon points="118,118 124,118 50,200 20,200" fill="#efe6d2"/>
+  <!-- red-and-white kerb stripes, right edge -->
+  <polygon points="202,118 212,118 328,200 300,200" fill="#9b3a22"/>
+  <polygon points="196,118 202,118 300,200 270,200" fill="#efe6d2"/>
+  <!-- dashed centre lane line -->
+  <polygon points="158,124 162,124 164,140 156,140" fill="#c8923a"/>
+  <polygon points="155,150 165,150 168,172 152,172" fill="#c8923a"/>
+  <!-- car body -->
+  <rect x="118" y="150" width="84" height="30" rx="6" fill="#9b3a22"/>
+  <!-- nose -->
+  <rect x="130" y="142" width="60" height="14" rx="5" fill="#c8923a"/>
+  <!-- cockpit -->
+  <rect x="142" y="146" width="36" height="14" rx="4" fill="#221f17"/>
+  <!-- rear wing -->
+  <rect x="112" y="146" width="96" height="7" rx="3" fill="#221f17"/>
+  <!-- wheels -->
+  <rect x="110" y="172" width="20" height="16" rx="4" fill="#221f17"/>
+  <rect x="190" y="172" width="20" height="16" rx="4" fill="#221f17"/>
+  <!-- checkpoint gate arch in the distance -->
+  <rect x="138" y="96" width="6" height="24" fill="#9b3a22"/>
+  <rect x="176" y="96" width="6" height="24" fill="#9b3a22"/>
+  <rect x="136" y="92" width="48" height="7" rx="2" fill="#c8923a"/>
+</svg>

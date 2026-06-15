@@ -126,11 +126,43 @@
     dl.shadow.camera.left=-40; dl.shadow.camera.right=40; dl.shadow.camera.top=40; dl.shadow.camera.bottom=-40;
     scene.add(dl); scene.add(dl.target);   // target must be in the scene graph for the light to aim
 
-    // big ground — plain solid warm earth
+    // big ground — sandy desert rally floor (matte tan, the Sega-Rally dirt)
     const ground=new THREE.Mesh(
       new THREE.PlaneGeometry(1000,1000),
-      new THREE.MeshStandardMaterial({color:0x8a6e44, metalness:0.0, roughness:1}));
+      new THREE.MeshStandardMaterial({color:0xb89255, metalness:0.0, roughness:1}));   // warm sand
     ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+
+    // ---- rally road: a long packed-dirt track strip the car drives along ----
+    // A redder graded-dirt road runs down the course centre with cream edge lines,
+    // the recognisable rally "stage road". It's a fixed-width band kept centred on
+    // the car's Z so it always reads as a track being driven through.
+    const ROAD_W=14, ROAD_LEN=600;
+    const roadGroup=new THREE.Group(); scene.add(roadGroup);
+    const road=new THREE.Mesh(
+      new THREE.PlaneGeometry(ROAD_W,ROAD_LEN),
+      new THREE.MeshStandardMaterial({color:0x9c7846, metalness:0.0, roughness:1}));   // graded dirt road
+    road.rotation.x=-Math.PI/2; road.position.y=0.01; road.receiveShadow=true; roadGroup.add(road);
+    // cream edge lines down both sides of the road
+    const edgeMat=new THREE.MeshStandardMaterial({color:0xefe6d2, roughness:0.9, metalness:0.0});
+    [-ROAD_W/2+0.35, ROAD_W/2-0.35].forEach(ex=>{
+      const e=new THREE.Mesh(new THREE.PlaneGeometry(0.5,ROAD_LEN), edgeMat);
+      e.rotation.x=-Math.PI/2; e.position.set(ex,0.02,0); e.receiveShadow=true; roadGroup.add(e);
+    });
+    // red/cream roadside marker posts lining the track — a classic rally stage cue
+    const markRed=new THREE.MeshStandardMaterial({color:0x9b3a22,roughness:0.7});   // oxblood
+    const markCream=new THREE.MeshStandardMaterial({color:0xefe6d2,roughness:0.7}); // cream cap
+    const MARK_GAP=14;
+    for(let k=0;k<2*Math.floor(ROAD_LEN/MARK_GAP);k++){
+      const side=(k%2===0)?-1:1;
+      const z=-ROAD_LEN/2 + Math.floor(k/2)*MARK_GAP;
+      const post=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,1.0,8),markRed);
+      post.position.set(side*(ROAD_W/2+0.9),0.5,z); post.castShadow=true; roadGroup.add(post);
+      const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,0.34,8),markCream);
+      cap.position.set(side*(ROAD_W/2+0.9),0.82,z); roadGroup.add(cap);
+    }
+    // keep the whole road band (track, edge lines, marker posts) centred on the car;
+    // the uniform marker spacing makes the slide seamless as the car travels.
+    function slideRoad(){ roadGroup.position.z=carGroup.position.z; }
 
     /* ---------- car ---------- */
     const carGroup=new THREE.Group();
@@ -140,6 +172,15 @@
     const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.55,1.2),
       new THREE.MeshStandardMaterial({color:0x221f17,metalness:0.1,roughness:0.55}));   // ink
     cabin.position.set(0,0.5,-0.05); cabin.castShadow=true; carGroup.add(cabin);
+    // cream rally roof + a cream door panel each side = recognisable rally livery
+    const roof=new THREE.Mesh(new THREE.BoxGeometry(1.12,0.1,1.0),
+      new THREE.MeshStandardMaterial({color:0xefe6d2,metalness:0.0,roughness:0.6}));
+    roof.position.set(0,0.79,-0.05); roof.castShadow=true; carGroup.add(roof);
+    const doorMat=new THREE.MeshStandardMaterial({color:0xefe6d2,metalness:0.0,roughness:0.6});
+    [[-0.77,0.4],[0.77,0.4]].forEach(([x,z])=>{
+      const dpan=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.34,0.8),doorMat);
+      dpan.position.set(x,0.06,z); carGroup.add(dpan);
+    });
     const headl=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.18,0.18),
       new THREE.MeshStandardMaterial({color:0xefe6d2,metalness:0.0,roughness:0.5}));   // matte cream, no glow
     headl.position.set(0,0.05,-1.4); carGroup.add(headl);
@@ -195,16 +236,27 @@
       obstacles.push(g);
     }
 
-    /* ---------- checkpoint gates (two posts + a flag plane between) ---------- */
-    const postMat=new THREE.MeshStandardMaterial({color:0xc8923a,metalness:0.0,roughness:0.6});   // ochre posts, no glow
-    const gateGlowMat=new THREE.MeshBasicMaterial({color:0x9b3a22,transparent:true,opacity:0.18,side:THREE.DoubleSide});   // oxblood checkpoint banner
+    /* ---------- checkpoint gates: a classic rally CHECKPOINT arch ----------
+       Two posts + an overhead banner panel spanning the road, the way an arcade
+       rally checkpoint gate reads at a glance. The banner is a solid oxblood panel
+       (the "CHECKPOINT" board) with a cream stripe; a soft pass-window plane keeps
+       the gameplay readability. Matte, no glow. */
+    const postMat=new THREE.MeshStandardMaterial({color:0x221f17,metalness:0.0,roughness:0.7});    // ink posts
+    const bannerMat=new THREE.MeshStandardMaterial({color:0x9b3a22,metalness:0.0,roughness:0.7});  // oxblood banner board
+    const stripeMat=new THREE.MeshStandardMaterial({color:0xefe6d2,metalness:0.0,roughness:0.7});  // cream stripe
+    const gateGlowMat=new THREE.MeshBasicMaterial({color:0xefe6d2,transparent:true,opacity:0.16,side:THREE.DoubleSide});   // soft pass-window
     function mkGate(){
       const g=new THREE.Group();
       const pl=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,4.2,10),postMat); pl.position.set(-3.4,2.1,0); pl.castShadow=true;
       const pr=pl.clone(); pr.position.x=3.4;
-      const glow=new THREE.Mesh(new THREE.PlaneGeometry(6.8,4.2),gateGlowMat); glow.position.y=2.1;
-      const beam=new THREE.Mesh(new THREE.BoxGeometry(7.0,0.3,0.3),postMat); beam.position.y=4.1;
-      g.add(pl); g.add(pr); g.add(glow); g.add(beam);
+      // overhead banner board across the top of the arch
+      const banner=new THREE.Mesh(new THREE.BoxGeometry(7.6,1.1,0.18),bannerMat);
+      banner.position.y=4.0; banner.castShadow=true;
+      const stripe=new THREE.Mesh(new THREE.BoxGeometry(7.62,0.26,0.2),stripeMat);
+      stripe.position.y=4.0;
+      // soft window plane keeps the "drive through here" affordance
+      const glow=new THREE.Mesh(new THREE.PlaneGeometry(6.8,3.4),gateGlowMat); glow.position.y=1.7;
+      g.add(pl); g.add(pr); g.add(glow); g.add(banner); g.add(stripe);
       g.userData={glow}; scene.add(g);
       return g;
     }
@@ -524,9 +576,11 @@
         // idle pre-start: gentle idle bob, timer waits
         carGroup.position.y=0.55+Math.sin(t*4)*0.01;
       }
-      // current gate banner reads a touch stronger than the next (matte, no glow flicker)
-      gateA.userData.glow.material.opacity=0.20;
-      gateB.userData.glow.material.opacity=0.10;
+      // keep the dirt road centred under the car so the stage track always reads
+      slideRoad();
+      // current gate's pass-window reads a touch stronger than the next (matte, no flicker)
+      gateA.userData.glow.material.opacity=0.18;
+      gateB.userData.glow.material.opacity=0.09;
 
       // animate dust / sparks always
       for(const p of dust){ if(p.life>0){ p.life-=0.028; p.vy-=0.018;

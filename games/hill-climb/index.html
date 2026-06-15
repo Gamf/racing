@@ -292,26 +292,31 @@
     // ---- render ----
     let camX=0, camY=0;
     function draw(){
-      // sky — warm flat cream
-      ctx.fillStyle='#efe6d2'; ctx.fillRect(0,0,W,H);
+      // sky — the Hill Climb signature: a calm matte blue, kept soft (no neon, no gradient glow)
+      ctx.fillStyle='#bcd3d8'; ctx.fillRect(0,0,W,H);
 
       // camera follows the car, biased so the car sits left-of-centre
       const tx=car.x - W*0.34, ty=car.y - H*0.52;
       camX += (tx-camX)*0.12; camY += (ty-camY)*0.10;
 
-      // flat printed sun disc + parallax ridges (matte earth tones, no glow)
+      // flat printed sun disc — warm ochre, matte (no glow)
       ctx.save();
-      const sunX=W*0.74, sunY=H*0.24;
-      ctx.fillStyle='#c8923a'; ctx.beginPath(); ctx.arc(sunX,sunY,46,0,6.28); ctx.fill();
+      const sunX=W*0.74, sunY=H*0.22;
+      ctx.fillStyle='#c8923a'; ctx.beginPath(); ctx.arc(sunX,sunY,42,0,6.28); ctx.fill();
       ctx.restore();
-      drawRidge(camX*0.25, H*0.62, 0.18, '#a4623a', 0.45);
-      drawRidge(camX*0.45, H*0.70, 0.30, '#6f6a3b', 0.7);
+      // a couple of soft matte clouds for the friendly side-scroller feel
+      drawCloud(W*0.18, H*0.20, 1.0); drawCloud(W*0.56, H*0.32, 0.7);
+      // distant rolling hills — muted greens, the recognisable layered backdrop
+      drawRidge(camX*0.25, H*0.64, 0.18, '#7d9a5a', 0.55);
+      drawRidge(camX*0.45, H*0.72, 0.30, '#5f7e44', 0.85);
 
       ctx.save();
       ctx.translate(-camX,-camY);
 
       // ---- terrain fill ----
+      // Hill Climb's signature ground: a brown earth body capped by a green grass strip.
       const left=camX-40, right=camX+W+40, step=8;
+      // earth body (matte brown), filled to well below the view
       ctx.beginPath();
       ctx.moveTo(left, camY+H+80);
       ctx.lineTo(left, ground(left));
@@ -319,14 +324,21 @@
       ctx.lineTo(right, ground(right));
       ctx.lineTo(right, camY+H+80);
       ctx.closePath();
-      // flat matte earth fill (no gradient/glow)
-      ctx.fillStyle='#6f6a3b'; ctx.fill();
-      // edge line on top of terrain — oxblood accent
+      ctx.fillStyle='#7a5230'; ctx.fill();        // flat matte earth
+      // grass cap — a band of green that hugs the surface line
+      const GRASS=16;
       ctx.beginPath();
       ctx.moveTo(left, ground(left));
       for(let x=left;x<=right;x+=step){ ctx.lineTo(x, ground(x)); }
-      ctx.lineWidth=4; ctx.strokeStyle='#9b3a22'; ctx.lineJoin='round'; ctx.stroke();
-      ctx.lineWidth=2; ctx.strokeStyle='#c8923a'; ctx.stroke();
+      for(let x=right;x>=left;x-=step){ ctx.lineTo(x, ground(x)+GRASS); }
+      ctx.closePath();
+      ctx.fillStyle='#6f9d4b'; ctx.fill();         // flat matte grass
+      // crisp grass-top line for the inked, readable edge
+      ctx.beginPath();
+      ctx.moveTo(left, ground(left));
+      for(let x=left;x<=right;x+=step){ ctx.lineTo(x, ground(x)); }
+      ctx.lineWidth=4; ctx.strokeStyle='#4e7a34'; ctx.lineJoin='round'; ctx.stroke();
+      ctx.lineWidth=2; ctx.strokeStyle='#86b85e'; ctx.stroke();
 
       // distance markers every 100m
       ctx.font='700 11px "Space Mono", monospace'; ctx.textAlign='center';
@@ -344,12 +356,15 @@
         if(p.x<left-30||p.x>right+30) continue;
         const py=ground(p.x)-26 + Math.sin(p.bob)*3;
         ctx.save(); ctx.translate(p.x,py);
-        // jerry can
-        ctx.fillStyle='#c8923a';
+        // jerry can — the iconic red fuel can with a yellow label band
+        ctx.fillStyle='#b8341d';
         roundRect(-9,-11,18,22,3);
-        ctx.fillStyle='#221f17'; ctx.font='700 10px "Space Mono", monospace'; ctx.textAlign='center';
+        ctx.fillStyle='#221f17'; ctx.fillRect(-9,-16,6,5);   // filler neck
+        ctx.fillStyle='#4a3b2a'; ctx.fillRect(-13,-15,6,3);  // spout
+        ctx.fillStyle='#e7c04a';                              // yellow label band
+        ctx.fillRect(-9,-2,18,7);
+        ctx.fillStyle='#b8341d'; ctx.font='700 8px "Space Mono", monospace'; ctx.textAlign='center';
         ctx.fillText('F', 0, 4);
-        ctx.fillStyle='#4a3b2a'; ctx.fillRect(-3,-15,6,4); // spout
         ctx.textAlign='left';
         ctx.restore();
       }
@@ -381,6 +396,15 @@
       }
     }
 
+    function drawCloud(x, y, s){
+      ctx.save(); ctx.fillStyle='rgba(255,255,255,0.66)';
+      ctx.beginPath();
+      ctx.arc(x, y, 16*s, 0, 6.28);
+      ctx.arc(x+18*s, y+4*s, 12*s, 0, 6.28);
+      ctx.arc(x-16*s, y+5*s, 11*s, 0, 6.28);
+      ctx.arc(x+4*s, y+8*s, 13*s, 0, 6.28);
+      ctx.fill(); ctx.restore();
+    }
     function drawRidge(off, baseY, amp, col, alpha){
       ctx.save(); ctx.globalAlpha=alpha; ctx.fillStyle=col;
       ctx.beginPath(); ctx.moveTo(0,H);
@@ -396,24 +420,32 @@
       // wheels
       drawWheel(rearX,rearY); drawWheel(frontX,frontY);
 
-      // chassis
+      // chassis — the chunky little red Hill Climb car with a helmeted driver
       ctx.save();
       ctx.translate(car.x,car.y); ctx.rotate(car.a);
       // soft contact shadow (warm, low-contrast — not a glow)
       ctx.fillStyle='rgba(34,31,23,0.22)';
       roundRect(-WHEEL_BASE*0.5-3, -CHASSIS_H*0.5+3, WHEEL_BASE+6, CHASSIS_H, 6);
-      // main body — oxblood accent, flat matte ink
-      ctx.fillStyle='#9b3a22';
+      // open-top cockpit shell (behind the driver) — dark trim
+      ctx.fillStyle='#3a2b1e';
+      roundRect(-WHEEL_BASE*0.5-1, -CHASSIS_H*0.5-7, WHEEL_BASE+2, CHASSIS_H+7, 6);
+      // main body — bright matte red, the recognisable colour identity
+      ctx.fillStyle='#cf3a22';
       roundRect(-WHEEL_BASE*0.5-3, -CHASSIS_H*0.5, WHEEL_BASE+6, CHASSIS_H, 6);
-      // cabin
-      ctx.fillStyle='#4a3b2a';
-      roundRect(-6, -CHASSIS_H*0.5-9, 20, 12, 4);
-      // window
-      ctx.fillStyle='#c8923a';
-      roundRect(-3, -CHASSIS_H*0.5-7, 14, 7, 2);
-      // bumper accent
+      // pale belly stripe for read at distance
       ctx.fillStyle='#efe6d2';
-      ctx.fillRect(WHEEL_BASE*0.5-1, -3, 4, 6);
+      ctx.fillRect(-WHEEL_BASE*0.5-3, CHASSIS_H*0.5-5, WHEEL_BASE+6, 4);
+      // front headlight nub
+      ctx.fillStyle='#e7c04a';
+      ctx.beginPath(); ctx.arc(WHEEL_BASE*0.5+2, 0, 3, 0, 6.28); ctx.fill();
+      // driver: shoulders + helmet sitting in the open cockpit
+      ctx.fillStyle='#2f4f7a';                        // jacket / shoulders
+      roundRect(-9, -CHASSIS_H*0.5-4, 16, 8, 3);
+      ctx.fillStyle='#e7c04a';                        // yellow helmet (matte)
+      ctx.beginPath(); ctx.arc(-1, -CHASSIS_H*0.5-7, 7, Math.PI, 0); ctx.fill();
+      ctx.fillRect(-8, -CHASSIS_H*0.5-7, 14, 4);
+      ctx.fillStyle='#221f17';                        // visor
+      ctx.fillRect(0, -CHASSIS_H*0.5-8, 6, 4);
       ctx.restore();
     }
     function drawWheel(x,y){

@@ -68,13 +68,13 @@
     document.body.appendChild(renderer.domElement);
 
     const scene=new THREE.Scene();
-    // solid warm cream daylight background
-    scene.background=new THREE.Color(0xe9dcc0);
-    scene.fog=new THREE.Fog(0xe9dcc0,30,78);
+    // soft daylight sky backdrop — the classic highway-racer horizon, done matte
+    scene.background=new THREE.Color(0x9fc3d6);
+    scene.fog=new THREE.Fog(0x9fc3d6,34,84);
     const camera=new THREE.PerspectiveCamera(66,1,0.1,160); camera.position.set(0,5.2,9.5); camera.lookAt(0,0.4,-12);
 
     // single warm directional + soft warm hemisphere
-    scene.add(new THREE.HemisphereLight(0xefe6d2,0x6f6a3b,0.85));
+    scene.add(new THREE.HemisphereLight(0xcfe3ee,0x6f8a44,0.85));
     const dl=new THREE.DirectionalLight(0xfff1d6,1.05); dl.position.set(5,12,6);
     dl.castShadow=true; dl.shadow.mapSize.set(1024,1024);
     dl.shadow.camera.near=1; dl.shadow.camera.far=50;
@@ -83,43 +83,70 @@
     scene.add(new THREE.AmbientLight(0xefe6d2,0.35));
 
     const ROAD_W=9, LANES=[-3,0,3];
-    // plain solid warm ground
+    // green grassy roadside — the classic racer's signature backdrop, done matte
     const ground=new THREE.Mesh(new THREE.PlaneGeometry(220,260),
-      new THREE.MeshStandardMaterial({color:0x6f6a3b,roughness:0.95,metalness:0}));
+      new THREE.MeshStandardMaterial({color:0x6f8a44,roughness:0.95,metalness:0}));
     ground.rotation.x=-Math.PI/2; ground.position.set(0,-0.02,-40); ground.receiveShadow=true; scene.add(ground);
-    const roadMat=new THREE.MeshStandardMaterial({color:0x4a3b2a,metalness:0,roughness:0.9});
+    // grey asphalt road
+    const roadMat=new THREE.MeshStandardMaterial({color:0x4d4f52,metalness:0,roughness:0.92});
     const roads=[0,1].map(i=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W,70),roadMat);
       m.rotation.x=-Math.PI/2; m.position.z=-i*70; m.receiveShadow=true; scene.add(m); return m; });
-    // matte road edges (oxblood accent)
-    const edgeMat=new THREE.MeshStandardMaterial({color:0x9b3a22,roughness:0.7,metalness:0});
-    [-1,1].forEach(s=>{ const e=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.12,140),edgeMat);
-      e.position.set(s*(ROAD_W/2-0.1),0.05,-35); scene.add(e); });
-    // lane dashes (ochre)
-    const dashMat=new THREE.MeshStandardMaterial({color:0xc8923a,roughness:0.8,metalness:0});
-    const dashes=[]; for(let i=0;i<24;i++){ const d=new THREE.Mesh(new THREE.PlaneGeometry(0.25,3),dashMat);
+    // bold white shoulder lines down each road edge
+    const edgeMat=new THREE.MeshStandardMaterial({color:0xeef0ea,roughness:0.7,metalness:0});
+    [-1,1].forEach(s=>{ const e=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.06,140),edgeMat);
+      e.position.set(s*(ROAD_W/2-0.25),0.04,-35); scene.add(e); });
+    // bright oxblood kerb just outside the white line
+    const kerbMat=new THREE.MeshStandardMaterial({color:0x9b3a22,roughness:0.75,metalness:0});
+    [-1,1].forEach(s=>{ const k=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.14,140),kerbMat);
+      k.position.set(s*(ROAD_W/2-0.02),0.06,-35); scene.add(k); });
+    // bold white dashed centre-lane markers (the iconic broken lines)
+    const dashMat=new THREE.MeshStandardMaterial({color:0xeef0ea,roughness:0.8,metalness:0});
+    const dashes=[]; for(let i=0;i<24;i++){ const d=new THREE.Mesh(new THREE.PlaneGeometry(0.28,3),dashMat);
       d.rotation.x=-Math.PI/2; d.position.set(i%2?1.5:-1.5,0.02,-i*6); scene.add(d); dashes.push(d); }
-    // side scenery (parallax pylons, matte clay)
-    const pyMat=new THREE.MeshStandardMaterial({color:0xa4623a,metalness:0,roughness:0.85});
-    const pylons=[]; for(let i=0;i<10;i++){ const s=i%2?-1:1; const p=new THREE.Mesh(new THREE.BoxGeometry(0.6,3+(i%3),0.6),pyMat);
-      p.position.set(s*7.5,1.5,-i*14); p.castShadow=true; scene.add(p); pylons.push(p); }
+    // side scenery: roadside trees (matte trunk + olive canopy) for parallax
+    const trunkMat=new THREE.MeshStandardMaterial({color:0x7a4a2c,metalness:0,roughness:0.9});
+    const leafMat=new THREE.MeshStandardMaterial({color:0x4f6b30,metalness:0,roughness:0.9});
+    const pylons=[]; for(let i=0;i<10;i++){ const s=i%2?-1:1;
+      const p=new THREE.Group();
+      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.28,1.6,8),trunkMat);
+      trunk.position.y=0.8; trunk.castShadow=true; p.add(trunk);
+      const canopy=new THREE.Mesh(new THREE.ConeGeometry(1.2+(i%3)*0.25,2.6+(i%3),9),leafMat);
+      canopy.position.y=2.6; canopy.castShadow=true; p.add(canopy);
+      p.position.set(s*7.5,0,-i*14); scene.add(p); pylons.push(p); }
 
-    // Player car: body + cabin + matte tail
-    const carGroup=new THREE.Group();
-    const car=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.7,2.6),
-      new THREE.MeshStandardMaterial({color:0x9b3a22,metalness:0,roughness:0.6}));
-    car.castShadow=true; carGroup.add(car);
-    const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.05,0.55,1.2),
-      new THREE.MeshStandardMaterial({color:0x221f17,metalness:0,roughness:0.55}));
-    cabin.position.set(0,0.55,0.1); cabin.castShadow=true; carGroup.add(cabin);
-    const tail=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.2,0.2),
-      new THREE.MeshStandardMaterial({color:0x4a3b2a,metalness:0,roughness:0.7}));
-    tail.position.set(0,0.1,1.35); carGroup.add(tail);
-    carGroup.position.set(0,0.45,4); scene.add(carGroup);
+    // ---- shared car builder: chassis + glassy cabin + tinted windscreen +
+    //      black tyres, so every vehicle reads clearly as a little car ----
+    const tyreMat=new THREE.MeshStandardMaterial({color:0x1c1a15,metalness:0,roughness:0.85});
+    const glassMat=new THREE.MeshStandardMaterial({color:0x2a3b46,metalness:0,roughness:0.4});
+    const wheelGeo=new THREE.CylinderGeometry(0.32,0.32,0.22,12);
+    function buildCar(bodyColor){
+      const g=new THREE.Group();
+      const body=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.55,2.6),
+        new THREE.MeshStandardMaterial({color:bodyColor,metalness:0,roughness:0.6}));
+      body.position.y=0.42; body.castShadow=true; g.add(body);
+      const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.12,0.5,1.3),
+        new THREE.MeshStandardMaterial({color:bodyColor,metalness:0,roughness:0.6}));
+      cabin.position.set(0,0.85,0.05); cabin.castShadow=true; g.add(cabin);
+      const glass=new THREE.Mesh(new THREE.BoxGeometry(1.16,0.4,0.5),glassMat);
+      glass.position.set(0,0.9,-0.5); g.add(glass);
+      const rear=new THREE.Mesh(new THREE.BoxGeometry(1.16,0.4,0.45),glassMat);
+      rear.position.set(0,0.9,0.6); g.add(rear);
+      [[-0.78,-0.85],[0.78,-0.85],[-0.78,0.85],[0.78,0.85]].forEach(([x,z])=>{
+        const w=new THREE.Mesh(wheelGeo,tyreMat); w.rotation.z=Math.PI/2;
+        w.position.set(x,0.32,z); g.add(w); });
+      return g;
+    }
+
+    // Player car — oxblood, our signature hero colour
+    const carGroup=buildCar(0x9b3a22);
+    carGroup.position.set(0,0.0,4); scene.add(carGroup);
 
     const obstacles=[]; let seed=99; const rnd=()=> (seed=(seed*1103515245+12345)&0x7fffffff)/0x7fffffff;
-    const obMat=()=>new THREE.MeshStandardMaterial({color:0xc8923a,metalness:0,roughness:0.7});
-    function mkOb(z){ const m=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.0,2.4),obMat());
-      m.position.set(LANES[Math.floor(rnd()*3)],0.5,z); m.castShadow=true; scene.add(m); obstacles.push(m); }
+    // bright distinct traffic colours so each oncoming car pops against the grey road
+    const TRAFFIC=[0xc8923a,0x3f7d6e,0xc7c2a8,0x6b6fa8,0xb5523a];
+    function mkOb(z){ const c=TRAFFIC[Math.floor(rnd()*TRAFFIC.length)];
+      const m=buildCar(c);
+      m.position.set(LANES[Math.floor(rnd()*3)],0,z); scene.add(m); obstacles.push(m); }
     for(let i=0;i<7;i++) mkOb(-12-i*14);
 
     // particle burst pool for crashes
@@ -190,11 +217,11 @@
       if(alive&&!paused){
         carGroup.position.x+=(targetX-carGroup.position.x)*0.2;
         carGroup.rotation.z=(carGroup.position.x-targetX)*0.12;
-        carGroup.position.y=0.45+Math.sin(t*8)*0.015;
+        carGroup.position.y=Math.sin(t*8)*0.015;
         roads.forEach(r=>{ r.position.z+=speed; if(r.position.z>35) r.position.z-=140; });
         dashes.forEach(d=>{ d.position.z+=speed; if(d.position.z>10) d.position.z-=144; });
-        pylons.forEach(p=>{ p.position.z+=speed; if(p.position.z>14) p.position.z-=140; p.rotation.y+=0.01; });
-        for(const o of obstacles){ o.position.z+=speed; o.rotation.y+=0.02;
+        pylons.forEach(p=>{ p.position.z+=speed; if(p.position.z>14) p.position.z-=140; });
+        for(const o of obstacles){ o.position.z+=speed;
           if(o.position.z>10){ o.position.z-=98; o.position.x=LANES[Math.floor(rnd()*3)];
             score++; document.getElementById('score').textContent=score; speed=Math.min(speed+0.012,1.6); }
           if(Math.abs(o.position.z-carGroup.position.z)<2.2 && Math.abs(o.position.x-carGroup.position.x)<1.5) end(); }

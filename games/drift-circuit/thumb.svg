@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="320" height="200">
+  <rect width="320" height="200" fill="#6f6a3b"/>
+  <!-- asphalt oval track (overhead racer) -->
+  <ellipse cx="160" cy="100" rx="120" ry="72" fill="none" stroke="#221f17" stroke-width="44"/>
+  <ellipse cx="160" cy="100" rx="120" ry="72" fill="none" stroke="#efe6d2" stroke-width="40"/>
+  <ellipse cx="160" cy="100" rx="120" ry="72" fill="none" stroke="#534f48" stroke-width="32"/>
+  <!-- grass infield -->
+  <ellipse cx="160" cy="100" rx="100" ry="52" fill="#6f6a3b"/>
+  <!-- center dashed lane line -->
+  <ellipse cx="160" cy="100" rx="120" ry="72" fill="none" stroke="#cdbf9a" stroke-width="3" stroke-dasharray="10 14"/>
+  <!-- checkered start/finish line at bottom -->
+  <g>
+    <rect x="142" y="158" width="9" height="9" fill="#221f17"/>
+    <rect x="151" y="158" width="9" height="9" fill="#efe6d2"/>
+    <rect x="160" y="158" width="9" height="9" fill="#221f17"/>
+    <rect x="169" y="158" width="9" height="9" fill="#efe6d2"/>
+    <rect x="142" y="167" width="9" height="9" fill="#efe6d2"/>
+    <rect x="151" y="167" width="9" height="9" fill="#221f17"/>
+    <rect x="160" y="167" width="9" height="9" fill="#efe6d2"/>
+    <rect x="169" y="167" width="9" height="9" fill="#221f17"/>
+  </g>
+  <!-- the race car (oxblood, top-down) on the track -->
+  <g transform="translate(254 100) rotate(-90)">
+    <rect x="-13" y="-9" width="26" height="18" rx="4" fill="#9b3a22"/>
+    <rect x="-4" y="-6" width="11" height="12" rx="3" fill="#221f17"/>
+    <rect x="-13" y="-7" width="3" height="14" rx="1" fill="#c8923a"/>
+  </g>
+  <!-- a coin to collect -->
+  <circle cx="66" cy="100" r="10" fill="#c8923a"/>
+  <circle cx="66" cy="100" r="5" fill="#9b3a22"/>
+</svg>

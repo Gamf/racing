@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#3a2c20">
+  <meta name="theme-color" content="#6ea2c8">
   <title>Traffic — Gamf</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -140,39 +140,51 @@
     document.body.appendChild(renderer.domElement);
 
     const scene=new THREE.Scene();
-    scene.background=new THREE.Color(0x3a2c20);
-    scene.fog=new THREE.Fog(0x3a2c20, 34, 96);
+    // Road-Fighter signature: blue sky horizon over green roadside.
+    scene.background=new THREE.Color(0x6ea2c8);
+    scene.fog=new THREE.Fog(0x6ea2c8, 40, 104);
 
     const camera=new THREE.PerspectiveCamera(62,1,0.1,300);
 
-    scene.add(new THREE.HemisphereLight(0xe8d6b8, 0x2a2118, 0.85));
-    scene.add(new THREE.AmbientLight(0xefe6d2, 0.28));
-    const dl=new THREE.DirectionalLight(0xf2dcb4, 1.0); dl.position.set(-9,18,8);
+    scene.add(new THREE.HemisphereLight(0xcfe3f0, 0x3a5224, 0.9));
+    scene.add(new THREE.AmbientLight(0xefe6d2, 0.30));
+    const dl=new THREE.DirectionalLight(0xfff2d4, 1.0); dl.position.set(-9,18,8);
     dl.castShadow=true; dl.shadow.mapSize.set(2048,2048);
     dl.shadow.camera.near=1; dl.shadow.camera.far=120;
     dl.shadow.camera.left=-30; dl.shadow.camera.right=30; dl.shadow.camera.top=40; dl.shadow.camera.bottom=-40;
     scene.add(dl);
 
     /* ---------- ground / grass shoulders ---------- */
+    // Road Fighter's bright green grass roadside.
     const grass=new THREE.Mesh(new THREE.PlaneGeometry(400,2000),
-      new THREE.MeshStandardMaterial({color:0x6f6a3b, roughness:1}));
+      new THREE.MeshStandardMaterial({color:0x4e8a3c, roughness:1}));
     grass.rotation.x=-Math.PI/2; grass.position.set(0,-0.02,-200); grass.receiveShadow=true; scene.add(grass);
 
+    // grey asphalt road.
     const road=new THREE.Mesh(new THREE.PlaneGeometry(ROAD_HALF*2+1.4, 2000),
-      new THREE.MeshStandardMaterial({color:0x4a3b2a, roughness:0.95}));
+      new THREE.MeshStandardMaterial({color:0x44464a, roughness:0.95}));
     road.rotation.x=-Math.PI/2; road.position.set(0,0,-200); road.receiveShadow=true; scene.add(road);
 
-    // curbs (red/bone striped feel via two solid rails)
+    // solid white road-edge lines flush with the asphalt (the classic shoulder stripe).
+    function mkEdge(side){
+      const m=new THREE.Mesh(new THREE.PlaneGeometry(0.32,2000),
+        new THREE.MeshStandardMaterial({color:0xf0ece0, roughness:0.85}));
+      m.rotation.x=-Math.PI/2; m.position.set(side*(ROAD_HALF-0.05), 0.02, -200); scene.add(m);
+    }
+    mkEdge(-1); mkEdge(1);
+
+    // low red/white kerb rails just off the asphalt.
     function mkRail(side){
-      const m=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,2000),
+      const m=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.4,2000),
         new THREE.MeshStandardMaterial({color:0x9b3a22, roughness:0.85}));
-      m.position.set(side*(ROAD_HALF+0.7), 0.22, -200); m.castShadow=true; scene.add(m);
+      m.position.set(side*(ROAD_HALF+0.55), 0.18, -200); m.castShadow=true; scene.add(m);
     }
     mkRail(-1); mkRail(1);
 
     /* ---------- scrolling lane dashes (pooled, recycled) ---------- */
+    // crisp white lane dashes (classic highway markings).
     const DASH_GAP=8, DASHES_PER=40;
-    const dashMat=new THREE.MeshStandardMaterial({color:0xc8923a, roughness:0.8});
+    const dashMat=new THREE.MeshStandardMaterial({color:0xf0ece0, roughness:0.8});
     const dashes=[];
     for(let l=1;l<LANES;l++){
       const lx=laneX(l)-LANE_W/2;
@@ -210,12 +222,14 @@
       return g;
     }
 
-    const PLAYER_COL=0x9b3a22;
+    // Road Fighter's bright red hero car.
+    const PLAYER_COL=0xc8332a;
     const player=buildCar(PLAYER_COL,true);
     player.position.set(0,0,0); scene.add(player);
 
-    /* ---------- traffic pool ---------- */
-    const TRAFFIC_COLS=[0xa4623a, 0x6f6a3b, 0xc8923a, 0x4a3b2a, 0x8a7a5a, 0x9b3a22];
+    /* ---------- traffic pool ----------
+       Classic colourful rival cars: yellow, blue, plus warm accents. */
+    const TRAFFIC_COLS=[0xe0b020, 0x3a6fb0, 0xc8923a, 0xa4623a, 0x6f6a3b, 0xe0b020];
     const POOL=26;
     const traffic=[];
     for(let i=0;i<POOL;i++){
@@ -307,7 +321,7 @@
         // ~60% oncoming (moving toward player, faster closing), 40% same-way (slower)
         const oncoming=srnd()<0.6;
         t.active=true; t.lane=lane; t.oncoming=oncoming; t.grazed=false;
-        const col=oncoming?pick(TRAFFIC_COLS):pick([0x6f6a3b,0xc8923a,0x8a7a5a,0xa4623a]);
+        const col=oncoming?pick(TRAFFIC_COLS):pick([0xe0b020,0x3a6fb0,0xc8923a,0xa4623a]);
         t.g.userData.body.material.color.set(col);
         // same-way cars move away from camera (toward -z) slowly; oncoming move toward +z
         t.speed = oncoming ? rng(8,16) : rng(10,18);

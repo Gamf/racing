@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">
+  <rect width="320" height="200" fill="#efe6d2"/>
+  <!-- grassy verges -->
+  <rect x="0" y="0" width="320" height="200" fill="#6f6a3b"/>
+  <!-- perspective road -->
+  <polygon points="120,0 200,0 270,200 50,200" fill="#221f17"/>
+  <polygon points="124,0 196,0 263,200 57,200" fill="#3a352a"/>
+  <!-- shoulder lines -->
+  <polygon points="120,0 124,0 57,200 50,200" fill="#f3ece0"/>
+  <polygon points="200,0 196,0 263,200 270,200" fill="#f3ece0"/>
+  <!-- dashed centre line -->
+  <polygon points="158,8 162,8 162,30 158,30" fill="#f3ece0"/>
+  <polygon points="157,52 163,52 164,82 156,82" fill="#f3ece0"/>
+  <polygon points="155,108 165,108 167,148 153,148" fill="#f3ece0"/>
+  <!-- player car (oxblood) lower lane -->
+  <g>
+    <rect x="170" y="138" width="46" height="52" rx="9" fill="#9b3a22"/>
+    <rect x="178" y="150" width="30" height="18" rx="4" fill="#221f17"/>
+    <rect x="166" y="146" width="6" height="14" rx="3" fill="#221f17"/>
+    <rect x="214" y="146" width="6" height="14" rx="3" fill="#221f17"/>
+    <rect x="166" y="170" width="6" height="14" rx="3" fill="#221f17"/>
+    <rect x="214" y="170" width="6" height="14" rx="3" fill="#221f17"/>
+  </g>
+  <!-- oncoming car (ochre) upper, smaller -->
+  <g>
+    <rect x="130" y="44" width="30" height="36" rx="6" fill="#c8923a"/>
+    <rect x="135" y="53" width="20" height="13" rx="3" fill="#221f17"/>
+    <rect x="127" y="49" width="4" height="9" rx="2" fill="#221f17"/>
+    <rect x="159" y="49" width="4" height="9" rx="2" fill="#221f17"/>
+    <rect x="127" y="66" width="4" height="9" rx="2" fill="#221f17"/>
+    <rect x="159" y="66" width="4" height="9" rx="2" fill="#221f17"/>
+  </g>
+  <!-- roadside tree -->
+  <polygon points="40,150 60,150 50,116" fill="#6f6a3b"/>
+  <rect x="47" y="150" width="6" height="16" fill="#221f17"/>
+</svg>

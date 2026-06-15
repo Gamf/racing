@@ -227,7 +227,7 @@
       // off-track friction
       const d=nearestTrackDist(car.x,car.y);
       if(d>TRACK_W){ car.speed*=0.9; car.vx*=0.9; car.vy*=0.9;
-        if(car.speed>1 && rnd()<0.5) spawnPart(car.x,car.y,'#7d6a4a',2,2); }
+        if(car.speed>1 && rnd()<0.5) spawnPart(car.x,car.y,'#5b6838',2,2); }
 
       // drift smoke
       if(car.drift>0.05 && car.speed>2){ const bx=car.x-fx*16, by=car.y-fy*16;
@@ -253,8 +253,9 @@
     let bgT=0;
     function draw(){
       bgT+=0.004;
-      // clean warm cream background
-      ctx.fillStyle='#efe6d2'; ctx.fillRect(0,0,W,H);
+      // soft matte grass-green surround — the signature look of a top-down arcade
+      // racer (overhead asphalt track set on green infield/grass).
+      ctx.fillStyle='#6f7d44'; ctx.fillRect(0,0,W,H);
 
       // camera follows car
       ctx.save();
@@ -262,23 +263,26 @@
       ctx.scale(1,1);
       ctx.translate(-car.x,-car.y);
 
-      // ---- track tarmac ----
+      // ---- track asphalt ----
       ctx.lineJoin='round'; ctx.lineCap='round';
-      // tarmac band (warm brown, flat matte)
+      // grass kerb shoulder just outside the track (slightly darker green border)
       ctx.beginPath(); pathTrack(); ctx.closePath();
-      ctx.strokeStyle='#4a3b2a'; ctx.lineWidth=TRACK_W*2; ctx.stroke();
-      // ochre kerb edge lines, flat
+      ctx.strokeStyle='#5b6838'; ctx.lineWidth=TRACK_W*2+12; ctx.stroke();
+      // white track edge line band
       ctx.beginPath(); pathTrack(); ctx.closePath();
-      ctx.strokeStyle='#c8923a'; ctx.lineWidth=TRACK_W*2-6; ctx.stroke();
-      // inner tarmac fill so kerb reads as a thin border
+      ctx.strokeStyle='#e9e2cf'; ctx.lineWidth=TRACK_W*2; ctx.stroke();
+      // grey asphalt surface (flat matte) inside the white edge
       ctx.beginPath(); pathTrack(); ctx.closePath();
-      ctx.strokeStyle='#4a3b2a'; ctx.lineWidth=TRACK_W*2-16; ctx.stroke();
-      // center dashed racing line (olive, no glow)
+      ctx.strokeStyle='#534f48'; ctx.lineWidth=TRACK_W*2-10; ctx.stroke();
+      // center dashed lane line (warm cream dashes — the classic road dashes)
       ctx.save();
-      ctx.setLineDash([14,18]); ctx.lineDashOffset=-bgT*120;
+      ctx.setLineDash([16,20]); ctx.lineDashOffset=-bgT*120;
       ctx.beginPath(); pathTrack(); ctx.closePath();
-      ctx.strokeStyle='#6f6a3b'; ctx.lineWidth=3; ctx.stroke();
+      ctx.strokeStyle='#cdbf9a'; ctx.lineWidth=3; ctx.stroke();
       ctx.setLineDash([]); ctx.restore();
+
+      // ---- checkered start/finish line across the track ----
+      drawStartLine();
 
       // ---- coins ----
       for(const c of coins){ if(c.got) continue;
@@ -314,6 +318,23 @@
     }
     function pathTrack(){ ctx.moveTo(trackPts[0].x,trackPts[0].y);
       for(let i=1;i<trackPts.length;i++) ctx.lineTo(trackPts[i].x,trackPts[i].y); }
+    // black & white checkered start/finish line drawn across the track at node 0
+    function drawStartLine(){
+      const p=trackPts[0], q=trackPts[1];
+      const ang=Math.atan2(q.y-p.y,q.x-p.x);
+      ctx.save();
+      ctx.translate(p.x,p.y); ctx.rotate(ang);
+      // band spans the asphalt width, a few tiles deep, perpendicular to travel
+      const half=TRACK_W-6, tile=10, depth=2;
+      for(let row=0;row<depth;row++){
+        for(let t=-half;t<half;t+=tile){
+          const idx=Math.floor((t+half)/tile);
+          ctx.fillStyle=((idx+row)&1)? '#e9e2cf' : '#221f17';
+          ctx.fillRect(row*tile-tile, t, tile, Math.min(tile,half-t));
+        }
+      }
+      ctx.restore();
+    }
     function roundRect(x,y,w,h,r){ ctx.beginPath();
       ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
       ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); ctx.fill(); }

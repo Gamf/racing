@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="320" height="200">
+  <!-- sky / desert backdrop -->
+  <rect width="320" height="200" fill="#f3ece0"/>
+  <rect y="118" width="320" height="82" fill="#efe6d2"/>
+  <!-- dirt rally road narrowing into the distance -->
+  <polygon points="120,118 200,118 280,200 40,200" fill="#c8923a"/>
+  <polygon points="146,118 174,118 168,200 152,200" fill="#efe6d2" opacity="0.55"/>
+  <!-- cream road edge lines -->
+  <polygon points="118,118 124,118 44,200 30,200" fill="#efe6d2"/>
+  <polygon points="196,118 202,118 290,200 276,200" fill="#efe6d2"/>
+  <!-- checkpoint gate arch -->
+  <rect x="118" y="62" width="10" height="58" fill="#221f17"/>
+  <rect x="192" y="62" width="10" height="58" fill="#221f17"/>
+  <rect x="112" y="50" width="96" height="22" fill="#9b3a22"/>
+  <rect x="112" y="58" width="96" height="6" fill="#efe6d2"/>
+  <!-- roadside marker posts -->
+  <rect x="96" y="96" width="6" height="20" fill="#9b3a22"/><rect x="96" y="96" width="6" height="6" fill="#efe6d2"/>
+  <rect x="218" y="96" width="6" height="20" fill="#9b3a22"/><rect x="218" y="96" width="6" height="6" fill="#efe6d2"/>
+  <!-- rally car -->
+  <ellipse cx="160" cy="178" rx="46" ry="9" fill="#221f17" opacity="0.18"/>
+  <rect x="118" y="138" width="84" height="30" rx="6" fill="#9b3a22"/>
+  <rect x="138" y="120" width="44" height="24" rx="6" fill="#221f17"/>
+  <rect x="138" y="120" width="44" height="8" rx="4" fill="#efe6d2"/>
+  <rect x="124" y="146" width="20" height="14" rx="3" fill="#efe6d2"/>
+  <rect x="176" y="146" width="20" height="14" rx="3" fill="#efe6d2"/>
+  <circle cx="132" cy="170" r="11" fill="#221f17"/>
+  <circle cx="188" cy="170" r="11" fill="#221f17"/>
+  <!-- dust kick -->
+  <circle cx="104" cy="166" r="7" fill="#c8923a"/>
+  <circle cx="92" cy="172" r="5" fill="#c8923a"/>
+  <circle cx="216" cy="166" r="7" fill="#c8923a"/>
+  <circle cx="228" cy="172" r="5" fill="#c8923a"/>
+</svg>

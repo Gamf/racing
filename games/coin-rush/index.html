@@ -213,7 +213,7 @@
       // off-track friction (grass)
       const d=nearestTrackDist(car.x,car.y);
       if(d>TRACK_W){ car.speed*=Math.pow(0.86,dt*60); car.vx*=0.9; car.vy*=0.9;
-        if(car.speed>1 && rnd()<0.5) spawnPart(car.x,car.y,'#6f6a3b',2,2); }
+        if(car.speed>1 && rnd()<0.5) spawnPart(car.x,car.y,'#8d8a55',2,2); }
 
       // boost trail + drift smoke
       if(input.boost && car.speed>2){ const bx=car.x-fx*16, by=car.y-fy*16;
@@ -273,8 +273,8 @@
 
     function draw(){
       bgT+=0.004;
-      // clean cream page (warm print catalogue)
-      ctx.fillStyle='#efe6d2'; ctx.fillRect(0,0,W,H);
+      // Super Sprint look: flat green infield/grass as the page ground
+      ctx.fillStyle='#6f6a3b'; ctx.fillRect(0,0,W,H);
 
       // camera follows car
       ctx.save();
@@ -282,18 +282,41 @@
       ctx.translate(-car.x,-car.y);
 
       ctx.lineJoin='round'; ctx.lineCap='round';
-      // olive verge under the tarmac (flat, printed)
+      // kerb / verge ring under the tarmac (light sandy edge)
       ctx.beginPath(); pathTrack(); ctx.closePath();
-      ctx.strokeStyle='#6f6a3b'; ctx.lineWidth=TRACK_W*2+14; ctx.stroke();
-      // tarmac band — warm brown ink
+      ctx.strokeStyle='#efe6d2'; ctx.lineWidth=TRACK_W*2+16; ctx.stroke();
+      // asphalt band — flat matte grey, the signature Super Sprint tarmac
       ctx.beginPath(); pathTrack(); ctx.closePath();
-      ctx.strokeStyle='#4a3b2a'; ctx.lineWidth=TRACK_W*2; ctx.stroke();
-      // center dashed racing line — oxblood accent, no glow
+      ctx.strokeStyle='#444a4d'; ctx.lineWidth=TRACK_W*2; ctx.stroke();
+      // painted edge lines (white track borders, top-down racer signature)
+      ctx.save();
+      ctx.beginPath(); pathTrack(); ctx.closePath();
+      ctx.strokeStyle='#d8d2c2'; ctx.lineWidth=TRACK_W*2-6; ctx.stroke();
+      ctx.beginPath(); pathTrack(); ctx.closePath();
+      ctx.strokeStyle='#444a4d'; ctx.lineWidth=TRACK_W*2-12; ctx.stroke();
+      ctx.restore();
+      // center dashed lane line — soft white road markings, no glow
       ctx.save();
       ctx.setLineDash([16,20]); ctx.lineDashOffset=-bgT*140;
       ctx.beginPath(); pathTrack(); ctx.closePath();
-      ctx.strokeStyle='rgba(155,58,34,0.55)'; ctx.lineWidth=3; ctx.stroke();
+      ctx.strokeStyle='rgba(225,220,205,0.65)'; ctx.lineWidth=3; ctx.stroke();
       ctx.setLineDash([]); ctx.restore();
+
+      // checkered start/finish line across the tarmac at the loop seam
+      ctx.save();
+      const s0=trackPts[0]; const n0=trackNormal(0);
+      const cols=5, cw=(TRACK_W*2)/cols, cell=11;
+      for(let r=0;r<2;r++) for(let cI=0;cI<cols;cI++){
+        if(((r+cI)&1)===0) continue;
+        const off=-TRACK_W+cw*cI+cw*0.5;
+        const px=s0.x+n0.nx*off, py=s0.y+n0.ny*off;
+        ctx.save(); ctx.translate(px,py);
+        ctx.rotate(Math.atan2(n0.ny,n0.nx));
+        ctx.fillStyle='#efe6d2';
+        ctx.fillRect(-cw*0.5,(r-1)*cell,cw,cell);
+        ctx.restore();
+      }
+      ctx.restore();
 
       // coins — flat ochre ink discs
       for(const c of coins){ if(c.got) continue;
@@ -328,13 +351,22 @@
         ctx.fillStyle=p.col; ctx.fillText(p.txt,p.x,p.y); }
       ctx.globalAlpha=1; ctx.textAlign='left';
 
-      // car — flat oxblood body, the player accent (no glow)
+      // car — top-down Super Sprint racer: four black tyres, oxblood body,
+      // cockpit + windshield, viewed from directly above (no glow)
       ctx.save();
       ctx.translate(car.x,car.y); ctx.rotate(car.a);
-      ctx.fillStyle='rgba(34,31,23,0.28)'; roundRect(-15,-7,33,19,5);
-      ctx.fillStyle='#9b3a22'; roundRect(-16,-9,32,18,5);
-      ctx.fillStyle='#221f17'; roundRect(-4,-6,12,12,3);
-      ctx.fillStyle='#c8923a'; roundRect(12,-7,3,14,2);
+      ctx.fillStyle='rgba(34,31,23,0.25)'; roundRect(-15,-8,33,20,5);  // soft contact shadow
+      // four tyres poking out of the chassis
+      ctx.fillStyle='#221f17';
+      roundRect(-12,-11,8,5,2); roundRect(4,-11,8,5,2);    // front + rear left
+      roundRect(-12,6,8,5,2);   roundRect(4,6,8,5,2);       // front + rear right
+      // body shell
+      ctx.fillStyle='#9b3a22'; roundRect(-16,-8,32,16,5);
+      // nose cone (lighter ochre tip = forward)
+      ctx.fillStyle='#c8923a'; roundRect(11,-5,6,10,3);
+      // cockpit + windshield
+      ctx.fillStyle='#221f17'; roundRect(-3,-5,9,10,3);
+      ctx.fillStyle='#7fb0c8'; roundRect(3,-4,4,8,2);       // windshield glint
       ctx.restore();
 
       ctx.restore();

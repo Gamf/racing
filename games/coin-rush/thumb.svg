@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">
+  <rect width="320" height="200" fill="#6f6a3b"/>
+  <!-- curved asphalt track (top-down) -->
+  <path d="M30 150 Q30 50 130 50 Q230 50 250 110 Q265 155 200 165 Q120 175 70 165 Q35 158 30 150 Z" fill="none" stroke="#efe6d2" stroke-width="56"/>
+  <path d="M30 150 Q30 50 130 50 Q230 50 250 110 Q265 155 200 165 Q120 175 70 165 Q35 158 30 150 Z" fill="none" stroke="#221f17" stroke-width="44" opacity="0.85"/>
+  <path d="M30 150 Q30 50 130 50 Q230 50 250 110 Q265 155 200 165 Q120 175 70 165 Q35 158 30 150 Z" fill="none" stroke="#f3ece0" stroke-width="3" stroke-dasharray="10 12"/>
+  <!-- gold coins on the track -->
+  <circle cx="208" cy="60" r="11" fill="#c8923a" stroke="#221f17" stroke-width="2"/>
+  <circle cx="208" cy="60" r="5" fill="none" stroke="#221f17" stroke-width="2"/>
+  <circle cx="245" cy="135" r="9" fill="#c8923a" stroke="#221f17" stroke-width="2"/>
+  <!-- top-down race car (oxblood) -->
+  <g transform="translate(110 152) rotate(-18)">
+    <rect x="-24" y="-19" width="14" height="9" rx="3" fill="#221f17"/>
+    <rect x="10" y="-19" width="14" height="9" rx="3" fill="#221f17"/>
+    <rect x="-24" y="10" width="14" height="9" rx="3" fill="#221f17"/>
+    <rect x="10" y="10" width="14" height="9" rx="3" fill="#221f17"/>
+    <rect x="-28" y="-15" width="56" height="30" rx="9" fill="#9b3a22"/>
+    <rect x="18" y="-9" width="12" height="18" rx="5" fill="#c8923a"/>
+    <rect x="-7" y="-9" width="16" height="18" rx="5" fill="#221f17"/>
+  </g>
+</svg>
