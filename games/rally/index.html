@@ -114,6 +114,7 @@
   <script type="importmap">
     { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
   </script>
+  <script src="../../gamf-controls.js"></script>
   <script type="module">
     import * as THREE from 'three';
     import { onDrag } from './touch.js';
@@ -377,6 +378,20 @@
     bindHold($('pD'),()=>keys.drift=true,()=>keys.drift=false);
     // show touch pads only once a touch is detected
     addEventListener('touchstart',()=>document.body.classList.add('touch'),{once:true,passive:true});
+
+    // shared on-screen controls: steering is also keyboard-only (A/D, arrows), so
+    // expose a held move D-pad (left/right), and Drift as a held action button.
+    // Each wires the SAME keys.* flags the keyboard handler toggles.
+    window.gamfControls({
+      hold:true,
+      move:{
+        left:()=>{ started=true; keys.left=true; setTimeout(()=>keys.left=false,130); },
+        right:()=>{ started=true; keys.right=true; setTimeout(()=>keys.right=false,130); },
+      },
+      actions:[
+        { label:'Drift', press:()=>{ started=true; keys.drift=true; }, release:()=>{ keys.drift=false; } },
+      ],
+    });
 
     function togglePause(){
       if(!alive) return;

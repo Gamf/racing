@@ -15,23 +15,6 @@
       touch-action:none; -webkit-user-select:none; user-select:none; }
     html,body{ height:100%; }
     canvas{ display:block; width:100%; height:100%; touch-action:none; }
-    /* on-screen touch steering pads (touch-first) */
-    .pads{ position:fixed; inset:0; z-index:5; pointer-events:none; }
-    .pad{ position:absolute; bottom:calc(env(safe-area-inset-bottom) + 64px);
-      width:78px; height:78px; border-radius:50%; display:grid; place-items:center;
-      pointer-events:auto; color:var(--gx-text);
-      background:color-mix(in srgb, var(--gx-accent) 16%, transparent);
-      border:1px solid color-mix(in srgb, var(--gx-accent) 45%, var(--gx-line));
-      backdrop-filter:blur(6px); transition:transform .1s, background .12s; }
-    .pad:active{ transform:scale(.92); background:color-mix(in srgb, var(--gx-accent) 34%, transparent); }
-    .pad svg{ width:30px; height:30px; }
-    #padL{ left:calc(env(safe-area-inset-left) + 20px); }
-    #padR{ left:calc(env(safe-area-inset-left) + 110px); }
-    #padBoost{ right:calc(env(safe-area-inset-right) + 20px);
-      color:var(--gx-brand-3);
-      background:color-mix(in srgb, var(--gx-brand-3) 16%, transparent);
-      border-color:color-mix(in srgb, var(--gx-brand-3) 45%, var(--gx-line)); }
-    #padBoost:active{ background:color-mix(in srgb, var(--gx-brand-3) 34%, transparent); }
     /* lap flash banner */
     .flash{ position:fixed; left:0; right:0; top:34%; z-index:5; text-align:center;
       pointer-events:none; font-family:var(--gx-font-display); font-weight:700;
@@ -63,13 +46,6 @@
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-restart"/></svg> R restart</span>
   </div>
 
-  <!-- on-screen steering / boost -->
-  <div class="pads">
-    <div class="pad" id="padL"><svg class="gx-ico"><use href="#i-left"/></svg></div>
-    <div class="pad" id="padR"><svg class="gx-ico"><use href="#i-right"/></svg></div>
-    <div class="pad" id="padBoost"><svg class="gx-ico"><use href="#i-up"/></svg></div>
-  </div>
-
   <div class="flash" id="flash"></div>
 
   <!-- game-over / pause modal -->
@@ -93,9 +69,9 @@
       <ul class="gx-help__list">
         <li><b>Drag / A · D</b><span>Steer</span></li>
         <li><b>Arrows</b><span>Steer</span></li>
-        <li><b>Tap pad / Space</b><span>Boost</span></li>
-        <li><b>P</b><span>Pause</span></li>
-        <li><b>R</b><span>Restart</span></li>
+        <li><b>Boost button / Space</b><span>Boost</span></li>
+        <li><b>Pause button / P</b><span>Pause</span></li>
+        <li><b>Restart button / R</b><span>Restart</span></li>
       </ul>
       <button class="gx-btn gx-btn--primary" id="gxHelpClose">Got it</button>
     </div>
@@ -104,6 +80,7 @@
   <script type="importmap">
     { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
   </script>
+  <script src="../../gamf-controls.js"></script>
   <script type="module">
     import * as THREE from 'three';
     import { onDrag } from './touch.js';
@@ -340,24 +317,12 @@
       move:({dx})=>{ if(running&&!paused){ steer=Math.max(-1,Math.min(1,steer+dx*0.012)); } },
       end:()=>{ steer*=0.4; }
     });
-    // tap left/right half also nudges steering for quick taps
-    renderer.domElement.addEventListener('pointerdown',(e)=>{
-      if(!running||paused) return;
-      const half=innerWidth/2;
-      steer=Math.max(-1,Math.min(1, steer + (e.clientX<half?-0.35:0.35)));
-    });
 
-    // touch pads
-    function bindPad(id,on){ const el=$(id);
-      const set=(v)=>e=>{ e.preventDefault(); on(v); };
-      el.addEventListener('pointerdown',set(true));
-      el.addEventListener('pointerup',set(false));
-      el.addEventListener('pointercancel',set(false));
-      el.addEventListener('pointerleave',set(false));
-    }
-    bindPad('padL',v=>input.left=v);
-    bindPad('padR',v=>input.right=v);
-    bindPad('padBoost',v=>input.boost=v);
+    // ---------- discrete actions (shared functions for keyboard + buttons) ----------
+    // Boost mirrors the Space/Enter key: starts a new race when idle, else holds boost.
+    function setBoost(v){ if(v && !running){ reset(); } else { input.boost=v; } }
+    function togglePause(){ if(running) paused=!paused; }
+    function restart(){ reset(); }
 
     // ---------- keyboard ----------
     const KEYS=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','A','d','D','w','W','s','S',' ','Enter','r','R','p','P']);
@@ -381,6 +346,16 @@
       }
     });
     $('again').onclick=reset;
+
+    // ---------- on-screen action buttons (shared helper) ----------
+    // Drag steers/aims; all discrete actions are dedicated buttons (no tap-anywhere).
+    window.gamfControls({
+      actions:[
+        { label:'Restart', press:restart },
+        { label:'Pause',   press:togglePause },
+        { label:'Boost',   press:()=>setBoost(true), release:()=>setBoost(false) },
+      ]
+    });
 
     // ---------- how-to-play overlay ----------
     const SEEN_KEY='gamf-seen-racing-time-trial';

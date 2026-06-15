@@ -114,6 +114,7 @@
   <script type="importmap">
     { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
   </script>
+  <script src="../../gamf-controls.js"></script>
   <script type="module">
     import * as THREE from 'three';
     import { onDrag } from './touch.js';
@@ -366,6 +367,9 @@
     bindTap($('pR'),()=>stepLane(1));
     addEventListener('touchstart',()=>document.body.classList.add('touch'),{once:true,passive:true});
 
+    // hide the legacy lane pads — shared on-screen controls replace them
+    $('pads').remove();
+
     function togglePause(){
       if(!alive) return;
       paused=!paused;
@@ -374,6 +378,21 @@
     }
     $('resume').onclick=()=>{ if(paused) togglePause(); };
     $('again').onclick=reset;
+
+    /* ---------- shared on-screen controls ----------
+       Drag still steers across the road (look/aim). Discrete actions are buttons:
+       left/right lane step (same fn as keyboard A/D + arrows), pause, restart. */
+    window.gamfControls({
+      move:{
+        left:()=>{ if(alive&&!paused) stepLane(-1); },
+        right:()=>{ if(alive&&!paused) stepLane(1); }
+      },
+      hold:false,           // each tap is one discrete lane step
+      actions:[
+        { label:'Pause', press:()=>togglePause() },
+        { label:'Restart', press:()=>reset() }
+      ]
+    });
 
     /* ---------- how-to-play overlay ---------- */
     const SEEN_KEY='gamf-seen-racing-'+SLUG;

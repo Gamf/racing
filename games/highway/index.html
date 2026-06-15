@@ -26,7 +26,7 @@
     <button class="gx-help__open" id="gxHelpOpen" aria-label="How to play"><svg class="gx-ico"><use href="#i-info"/></svg></button>
   </div>
   <div class="gx-hint">
-    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-touch"/></svg> drag / tap sides</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-touch"/></svg> drag / buttons</span>
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-left"/></svg><svg class="gx-ico"><use href="#i-right"/></svg> A D / arrows steer</span>
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-pause"/></svg> P pause</span>
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-restart"/></svg> R restart</span>
@@ -46,7 +46,7 @@
       <p class="gx-help__obj">Weave between lanes and dodge the oncoming traffic for as long as you can — each car you pass scores a point.</p>
       <ul class="gx-help__list">
         <li><b>Drag / Arrows</b><span>Steer left &amp; right</span></li>
-        <li><b>Tap side / A&nbsp;D</b><span>Nudge a lane</span></li>
+        <li><b>◀ ▶ / A&nbsp;D</b><span>Nudge a lane</span></li>
         <li><b>P</b><span>Pause</span></li>
         <li><b>R</b><span>Restart</span></li>
       </ul>
@@ -56,6 +56,7 @@
   <script type="importmap">
     { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
   </script>
+  <script src="../../gamf-controls.js"></script>
   <script type="module">
     import * as THREE from 'three';
     import { onDrag } from './touch.js';
@@ -136,10 +137,13 @@
       sparks.forEach(p=>{p.m.visible=false;p.life=0;});
       document.getElementById('score').textContent=0; document.getElementById('over').classList.remove('gx-show'); }
 
-    // ---- input: drag/swipe + tap sides ----
+    // ---- input: drag/swipe steers (look/aim) ----
     onDrag(renderer.domElement,{ move:({dx})=>{ if(alive&&!paused) targetX=Math.max(-3,Math.min(3,targetX+dx*0.02)); }});
-    renderer.domElement.addEventListener('pointerdown',(e)=>{ if(!alive||paused) return;
-      const half=innerWidth/2; targetX=Math.max(-3,Math.min(3, targetX+(e.clientX<half?-1.5:1.5))); });
+
+    // ---- discrete lane-nudge actions (shared by keyboard + on-screen buttons) ----
+    function nudgeLeft(){ if(alive&&!paused) targetX=Math.max(-3,targetX-3); }
+    function nudgeRight(){ if(alive&&!paused) targetX=Math.min(3,targetX+3); }
+    function togglePause(){ if(alive) paused=!paused; }
 
     // ---- keyboard ----
     const KEYS=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','A','d','D','w','W','s','S',' ','Enter','r','R','p','P']);
@@ -147,11 +151,11 @@
       if(KEYS.has(e.key)) e.preventDefault();
       if(document.getElementById('gxHelp').classList.contains('gx-show')) return;
       if(e.key==='r'||e.key==='R'){ reset(); return; }
-      if(e.key==='p'||e.key==='P'){ if(alive) paused=!paused; return; }
+      if(e.key==='p'||e.key==='P'){ togglePause(); return; }
       if(!alive){ if(e.key===' '||e.key==='Enter'){ reset(); } return; }
       if(paused) return;
-      if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') targetX=Math.max(-3,targetX-3);
-      else if(e.key==='ArrowRight'||e.key==='d'||e.key==='D') targetX=Math.min(3,targetX+3);
+      if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') nudgeLeft();
+      else if(e.key==='ArrowRight'||e.key==='d'||e.key==='D') nudgeRight();
     });
 
     function resize(){ renderer.setSize(innerWidth,innerHeight);
@@ -198,6 +202,16 @@
       renderer.render(scene,camera);
     }
     reset(); animate();
+
+    // ---- on-screen buttons (same functions as keyboard; drag still steers) ----
+    window.gamfControls({
+      move:{ left:nudgeLeft, right:nudgeRight },   // discrete lane nudge — no hold/repeat
+      actions:[
+        { label:'Pause', press:togglePause },
+        { label:'Restart', press:reset },
+      ],
+    });
+
     if(!localStorage.getItem(HELP_KEY)){ showHelp(); localStorage.setItem(HELP_KEY,'1'); }
   </script>
 </body>

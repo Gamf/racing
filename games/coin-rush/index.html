@@ -80,6 +80,7 @@
     </div>
   </div>
   <canvas id="c"></canvas>
+  <script src="../../gamf-controls.js"></script>
   <script type="module">
     import { onDrag } from './touch.js';
 
@@ -405,6 +406,25 @@
     $('gxHelpClose').addEventListener('click', hideHelp);
     helpEl.addEventListener('click',(e)=>{ if(e.target===helpEl) hideHelp(); });
     if(!localStorage.getItem(SEEN_KEY)){ showHelp(); localStorage.setItem(SEEN_KEY,'1'); }
+
+    // ---- on-screen buttons (everything is a button; mirrors the keyboard) ----
+    // Steering mirrors ArrowLeft/ArrowRight (held => continuous nudge of `steer`).
+    window.gamfControls({
+      move: {
+        left:  ()=>{ if(running&&!paused) steer=Math.max(-1,steer-0.10); },
+        right: ()=>{ if(running&&!paused) steer=Math.min(1,steer+0.10); },
+      },
+      hold: true,                          // auto-repeat while held => continuous steering
+      actions: [
+        { label:'Restart', press:reset },                                   // R / Enter when stopped
+        { label:'Pause',   press:()=>{ if(running) paused=!paused; } },     // P
+        { label:'Boost',   press:()=>{ if(!running){ reset(); } else input.boost=true; },
+                           release:()=>{ input.boost=false; } },            // Space
+        { label:'Brake',   press:()=>{ input.gas=false; },
+                           release:()=>{ input.gas=true; } },               // ArrowDown / S
+        { label:'Gas',     press:()=>{ input.gas=true; } },                 // ArrowUp / W
+      ],
+    });
   </script>
 </body>
 </html>

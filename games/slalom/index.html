@@ -97,6 +97,7 @@
   <script type="importmap">
     { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
   </script>
+  <script src="../../gamf-controls.js"></script>
   <script type="module">
     import * as THREE from 'three';
     import { onDrag } from './touch.js';
@@ -333,11 +334,6 @@
       move:({dx})=>{ if(running&&!paused){ steer=Math.max(-1,Math.min(1,steer+dx*0.018)); } },
       end:()=>{ steer*=0.35; }
     });
-    renderer.domElement.addEventListener('pointerdown',(e)=>{
-      if(!running||paused) return;
-      const half=innerWidth/2;
-      steer=Math.max(-1,Math.min(1, steer + (e.clientX<half?-0.4:0.4)));
-    });
 
     // touch pads
     function bindPad(id,on){ const el=$(id);
@@ -350,22 +346,31 @@
     bindPad('padL',v=>input.left=v);
     bindPad('padR',v=>input.right=v);
 
+    // ---------- discrete actions (shared by keyboard + on-screen buttons) ----------
+    function togglePause(){
+      if(document.getElementById('gxHelp').classList.contains('gx-show')) return;
+      if(!running) return;
+      paused=!paused;
+      if(paused){ $('overTitle').textContent='Paused'; $('finalGates').textContent=gatesCleared;
+        $('finalMissed').textContent=gatesMissed; $('finalScore').textContent='—'; $('finalBest').textContent=best;
+        $('newBest').textContent=''; $('over').classList.add('gx-show'); }
+      else { $('over').classList.remove('gx-show'); }
+    }
+    function restart(){
+      document.getElementById('gxHelp').classList.remove('gx-show');
+      reset();
+    }
+
     // ---------- keyboard ----------
     const KEYS=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','A','d','D','w','W','s','S',' ','Enter','r','R','p','P']);
     addEventListener('keydown',(e)=>{
       if(KEYS.has(e.key)) e.preventDefault();
-      const helpOpen = document.getElementById('gxHelp').classList.contains('gx-show');
       switch(e.key){
         case 'ArrowLeft': case 'a': case 'A': input.left=true; break;
         case 'ArrowRight': case 'd': case 'D': input.right=true; break;
         case ' ': case 'Enter': if(!running){ reset(); } break;
-        case 'r': case 'R': document.getElementById('gxHelp').classList.remove('gx-show'); reset(); break;
-        case 'p': case 'P': if(helpOpen) break; if(running){ paused=!paused;
-          if(paused){ $('overTitle').textContent='Paused'; $('finalGates').textContent=gatesCleared;
-            $('finalMissed').textContent=gatesMissed; $('finalScore').textContent='—'; $('finalBest').textContent=best;
-            $('newBest').textContent=''; $('over').classList.add('gx-show'); }
-          else { $('over').classList.remove('gx-show'); } }
-          break;
+        case 'r': case 'R': restart(); break;
+        case 'p': case 'P': togglePause(); break;
       }
     });
     addEventListener('keyup',(e)=>{
@@ -395,6 +400,22 @@
       openHelp();
       localStorage.setItem('gamf-seen-racing-slalom','1');
     }
+
+    // ---------- on-screen controls (shared helper) ----------
+    // Drag still carves (look/aim). Steering is continuous movement, so a held
+    // D-pad nudges the same input.left/right the keyboard uses; discrete actions
+    // (pause / restart) are dedicated buttons — never tap-anywhere.
+    window.gamfControls({
+      move:{
+        left:()=>{ steer=Math.max(-1,Math.min(1, steer-0.4)); },
+        right:()=>{ steer=Math.max(-1,Math.min(1, steer+0.4)); }
+      },
+      hold:true,
+      actions:[
+        { label:'Pause', press:togglePause },
+        { label:'Restart', press:restart }
+      ]
+    });
 
     // ---------- update ----------
     function update(dt){

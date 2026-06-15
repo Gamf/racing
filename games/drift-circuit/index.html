@@ -76,6 +76,7 @@
     </div>
   </div>
   <canvas id="c"></canvas>
+  <script src="../../gamf-controls.js"></script>
   <script type="module">
     import { onDrag, onSwipe } from './touch.js';
 
@@ -176,6 +177,30 @@
       }
     });
     document.getElementById('again').onclick=reset;
+
+    // ---- on-screen buttons (shared helper) — everything is a button ----
+    // The D-pad helper only fires `press` (no release) and auto-repeats while held
+    // (hold:true). Held steering/gas inputs are booleans, so each press sets the
+    // input true and a short timeout clears it; continuous holding (repeat every
+    // ~120ms) keeps it on, releasing lets it lapse.
+    function holdInput(key){ input[key]=true;
+      clearTimeout(holdInput['_t_'+key]);
+      holdInput['_t_'+key]=setTimeout(()=>{ input[key]=false; },200); }
+    window.gamfControls({
+      move:{
+        left:()=>holdInput('left'),
+        right:()=>holdInput('right'),
+        up:()=>holdInput('gas'),
+      },
+      hold:true,
+      actions:[
+        { label:'Boost', press:()=>{ if(!running){ reset(); } else { input.gas=true; input.boost=true; } },
+                         release:()=>{ input.boost=false; } },
+        { label:'Brake', press:()=>{ input.gas=false; } },
+        { label:'Pause', press:()=>{ if(running) paused=!paused; } },
+        { label:'Reset', press:reset },
+      ]
+    });
 
     // ---- how-to-play overlay ----
     const SEEN_KEY='gamf-seen-racing-'+SLUG;

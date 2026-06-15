@@ -79,6 +79,7 @@
     </div>
   </div>
   <canvas id="c"></canvas>
+  <script src="../../gamf-controls.js"></script>
   <script type="module">
     import { onTap } from './touch.js';
 
@@ -488,6 +489,22 @@
     document.getElementById('gxHelpClose').addEventListener('click',hideHelp);
     helpEl.addEventListener('click',(e)=>{ if(e.target===helpEl) hideHelp(); });
     if(!localStorage.getItem(SEEN_KEY)){ showHelp(); localStorage.setItem(SEEN_KEY,'1'); }
+
+    // ---- on-screen buttons (shared editorial helper) ----
+    // Gas / Brake are HELD inputs, so they use action buttons with press+release
+    // to mirror the keyboard exactly. Pause and Restart are momentary actions.
+    window.gamfControls({
+      actions:[
+        { label:'Gas',
+          press:()=>{ if(!running){ reset(); } else { input.gas=true; } },
+          release:()=>{ input.gas=false; } },
+        { label:'Brake',
+          press:()=>{ input.brake=true; },
+          release:()=>{ input.brake=false; } },
+        { label:'Pause', press:()=>{ if(running&&!dead) paused=!paused; } },
+        { label:'Restart', press:()=>{ reset(); } },
+      ],
+    });
   </script>
 </body>
 </html>
