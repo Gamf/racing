@@ -140,9 +140,13 @@
     // ---- input: drag/swipe steers (look/aim) ----
     onDrag(renderer.domElement,{ move:({dx})=>{ if(alive&&!paused) targetX=Math.max(-3,Math.min(3,targetX+dx*0.02)); }});
 
-    // ---- discrete lane-nudge actions (shared by keyboard + on-screen buttons) ----
+    // ---- steering (shared by keyboard + on-screen buttons) ----
+    // Keyboard taps jump a full lane (snappy). The held D-pad calls steerLeft/
+    // steerRight on auto-repeat, so a held thumb glides the car smoothly across.
     function nudgeLeft(){ if(alive&&!paused) targetX=Math.max(-3,targetX-3); }
     function nudgeRight(){ if(alive&&!paused) targetX=Math.min(3,targetX+3); }
+    function steerLeft(){ if(alive&&!paused) targetX=Math.max(-3,targetX-0.6); }
+    function steerRight(){ if(alive&&!paused) targetX=Math.min(3,targetX+0.6); }
     function togglePause(){ if(alive) paused=!paused; }
 
     // ---- keyboard ----
@@ -203,13 +207,15 @@
     }
     reset(); animate();
 
-    // ---- on-screen buttons (same functions as keyboard; drag still steers) ----
+    // ---- on-screen buttons (drag still steers; D-pad is the comfy default) ----
+    // Steering is continuous: holding the D-pad must keep the car moving, so
+    // hold:true auto-repeats the small steerLeft/steerRight glide. Left+right
+    // only — no up/down, no action cluster (this game has no fire/jump action,
+    // and Pause/Restart live on the keyboard + the game-over screen so a novice
+    // can't fat-finger them while steering).
     window.gamfControls({
-      move:{ left:nudgeLeft, right:nudgeRight },   // discrete lane nudge — no hold/repeat
-      actions:[
-        { label:'Pause', press:togglePause },
-        { label:'Restart', press:reset },
-      ],
+      move:{ left:steerLeft, right:steerRight },
+      hold:true,
     });
 
     if(!localStorage.getItem(HELP_KEY)){ showHelp(); localStorage.setItem(HELP_KEY,'1'); }

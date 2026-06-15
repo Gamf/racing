@@ -32,20 +32,6 @@
       background:linear-gradient(90deg, var(--gx-good), var(--gx-accent));
       transition:width .12s linear; transform-origin:left; }
     #timefill.low{ background:linear-gradient(90deg, var(--gx-danger), var(--gx-warn)); }
-    /* on-screen steer + drift pads (touch) */
-    #pads{ position:fixed; inset:0; z-index:3; pointer-events:none; display:none; }
-    body.touch #pads{ display:block; }
-    .pad{ position:absolute; bottom:calc(env(safe-area-inset-bottom) + 70px);
-      width:84px; height:84px; border-radius:50%; pointer-events:auto;
-      display:grid; place-items:center; color:var(--gx-text);
-      background:color-mix(in srgb, var(--gx-bg) 50%, transparent);
-      border:1px solid var(--gx-line-2); backdrop-filter:blur(8px); }
-    .pad:active{ background:color-mix(in srgb, var(--gx-accent) 40%, transparent); }
-    .pad svg{ width:32px; height:32px; }
-    #pL{ left:calc(env(safe-area-inset-left) + 16px); }
-    #pR{ left:calc(env(safe-area-inset-left) + 112px); }
-    #pD{ right:calc(env(safe-area-inset-right) + 16px); width:96px; height:96px;
-      font-family:var(--gx-font-display); font-weight:700; font-size:var(--fs-sm); }
   </style>
 </head>
 <body class="gx">
@@ -63,17 +49,10 @@
   <div id="flash"></div>
 
   <div class="gx-hint">
-    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-touch"/></svg> steer + drift pads</span>
-    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-left"/></svg><svg class="gx-ico"><use href="#i-right"/></svg> A D / arrows steer</span>
-    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-down"/></svg> Space drift</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-left"/></svg><svg class="gx-ico"><use href="#i-right"/></svg> hold to steer · A D / arrows</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-touch"/></svg> hold Drift · Space / Down</span>
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-pause"/></svg> P pause</span>
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-restart"/></svg> R restart</span>
-  </div>
-
-  <div id="pads">
-    <button class="pad" id="pL" aria-label="steer left"><svg class="gx-ico"><use href="#i-left"/></svg></button>
-    <button class="pad" id="pR" aria-label="steer right"><svg class="gx-ico"><use href="#i-right"/></svg></button>
-    <button class="pad" id="pD" aria-label="drift">DRIFT</button>
   </div>
 
   <div class="gx-modal" id="over">
@@ -117,7 +96,6 @@
   <script src="../../gamf-controls.js"></script>
   <script type="module">
     import * as THREE from 'three';
-    import { onDrag } from './touch.js';
 
     const SLUG='rally', BEST_KEY='gamf-racing-'+SLUG+'-best';
 
@@ -360,36 +338,25 @@
       if(e.key===' '||e.key==='ArrowDown'||e.key==='s'||e.key==='S') keys.drift=false;
     });
 
-    // touch: drag to steer (proportional) + on-screen pads
-    let dragSteer=0;
-    onDrag(renderer.domElement,{
-      start:()=>{ if(alive&&!paused){ started=true; } },
-      move:({dx})=>{ if(alive&&!paused){ dragSteer=Math.max(-1,Math.min(1,dragSteer+dx*0.012)); started=true; } },
-      end:()=>{ dragSteer=0; }
-    });
-    function bindHold(el,on,off){
-      el.addEventListener('pointerdown',e=>{e.preventDefault(); started=true; on();});
-      el.addEventListener('pointerup',e=>{e.preventDefault(); off();});
-      el.addEventListener('pointercancel',e=>{off();});
-      el.addEventListener('pointerleave',e=>{off();});
-    }
-    bindHold($('pL'),()=>keys.left=true,()=>keys.left=false);
-    bindHold($('pR'),()=>keys.right=true,()=>keys.right=false);
-    bindHold($('pD'),()=>keys.drift=true,()=>keys.drift=false);
-    // show touch pads only once a touch is detected
-    addEventListener('touchstart',()=>document.body.classList.add('touch'),{once:true,passive:true});
-
-    // shared on-screen controls: steering is also keyboard-only (A/D, arrows), so
-    // expose a held move D-pad (left/right), and Drift as a held action button.
-    // Each wires the SAME keys.* flags the keyboard handler toggles.
+    // Shared on-screen thumb-zone controls (gamf-controls.js):
+    //  - bottom-LEFT D-pad: steer left / right. This is CONTINUOUS steering, so a
+    //    novice will just HOLD the button. The helper's hold:true re-fires press()
+    //    every ~110ms while held; we latch a steer direction for a little longer
+    //    than that gap so the car keeps carving smoothly for the whole hold and
+    //    coasts straight ~180ms after release (no release callback on D-pad btns).
+    //  - bottom-RIGHT: one big primary "Drift" button (the only gameplay action),
+    //    held via press/release. Pause/Restart stay OFF the thumb cluster (P / R
+    //    on the keyboard, and the game-over card), so a novice can't fumble them.
+    let touchSteer=0, touchSteerUntil=0;
+    function holdSteer(dir){ if(alive&&!paused){ touchSteer=dir; touchSteerUntil=performance.now()+180; started=true; } }
     window.gamfControls({
       hold:true,
       move:{
-        left:()=>{ started=true; keys.left=true; setTimeout(()=>keys.left=false,130); },
-        right:()=>{ started=true; keys.right=true; setTimeout(()=>keys.right=false,130); },
+        left:()=>holdSteer(-1),
+        right:()=>holdSteer(1),
       },
       actions:[
-        { label:'Drift', press:()=>{ started=true; keys.drift=true; }, release:()=>{ keys.drift=false; } },
+        { label:'Drift', press:()=>{ if(alive&&!paused){ started=true; keys.drift=true; } }, release:()=>{ keys.drift=false; } },
       ],
     });
 
@@ -444,10 +411,10 @@
     const ACC=0.0072, MAXSPD=0.62, FRICT=0.992, TURN=0.045;
     let t=0;
     function step(){
-      // resolve steer from keys / drag
+      // resolve steer from keys (held) + touch D-pad latch (held)
       let s=0;
       if(keys.left) s-=1; if(keys.right) s+=1;
-      s+=dragSteer;
+      if(performance.now()<touchSteerUntil) s+=touchSteer;
       steer += (Math.max(-1,Math.min(1,s)) - steer)*0.25;
       drifting = keys.drift;
 

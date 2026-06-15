@@ -14,23 +14,6 @@
       touch-action:none; -webkit-user-select:none; user-select:none; }
     html,body{ height:100%; }
     canvas{display:block;width:100%;height:100%;touch-action:none}
-    /* on-screen touch pads */
-    .pads{position:fixed;inset:0;z-index:5;pointer-events:none}
-    .pad{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 56px);width:88px;height:88px;border-radius:50%;
-      display:grid;place-items:center;pointer-events:auto;color:var(--gx-text);
-      font-family:var(--gx-font-body);font-weight:800;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
-      background:color-mix(in srgb, #c8923a 16%, transparent);
-      border:1px solid color-mix(in srgb, #c8923a 45%, var(--gx-line));
-      backdrop-filter:blur(6px);transition:transform .1s, background .12s}
-    .pad:active{transform:scale(.92)}
-    .pad svg{width:30px;height:30px}
-    .pad small{position:absolute;bottom:14px;opacity:.85}
-    #padBrake{left:calc(env(safe-area-inset-left) + 18px);color:#9b3a22;
-      background:color-mix(in srgb, #9b3a22 16%, transparent);
-      border-color:color-mix(in srgb, #9b3a22 45%, var(--gx-line))}
-    #padBrake:active{background:color-mix(in srgb, #9b3a22 34%, transparent)}
-    #padGas{right:calc(env(safe-area-inset-right) + 18px);color:#c8923a}
-    #padGas:active{background:color-mix(in srgb, #c8923a 34%, transparent)}
   </style>
 </head>
 <body class="gx">
@@ -49,10 +32,6 @@
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-coin"/></svg> grab fuel</span>
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-pause"/></svg> P pause</span>
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-restart"/></svg> R restart</span>
-  </div>
-  <div class="pads">
-    <div class="pad" id="padBrake"><svg class="gx-ico"><use href="#i-left"/></svg><small>Brake</small></div>
-    <div class="pad" id="padGas"><svg class="gx-ico"><use href="#i-right"/></svg><small>Gas</small></div>
   </div>
   <div class="gx-modal" id="over">
     <div class="gx-modal__card">
@@ -168,12 +147,8 @@
 
     // ---- input ----
     const input={gas:false,brake:false};
-    function bindPad(id,on){ const el=document.getElementById(id);
-      const set=(v)=>e=>{ e.preventDefault(); on(v); };
-      el.addEventListener('pointerdown',set(true)); el.addEventListener('pointerup',set(false));
-      el.addEventListener('pointercancel',set(false)); el.addEventListener('pointerleave',set(false)); }
-    bindPad('padGas',v=>input.gas=v); bindPad('padBrake',v=>input.brake=v);
-    // tap canvas while dead/over to restart quickly
+    // tap canvas while dead/over to restart quickly (only fires when not running,
+    // so it never competes with the on-screen gameplay buttons)
     onTap(canvas,()=>{ if(!running) reset(); });
 
     const KEYS=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','A','d','D','w','W','s','S',' ','Enter','r','R','p','P']);
@@ -491,8 +466,15 @@
     if(!localStorage.getItem(SEEN_KEY)){ showHelp(); localStorage.setItem(SEEN_KEY,'1'); }
 
     // ---- on-screen buttons (shared editorial helper) ----
-    // Gas / Brake are HELD inputs, so they use action buttons with press+release
-    // to mirror the keyboard exactly. Pause and Restart are momentary actions.
+    // Hill-climb is a left/right-only continuous game: Gas and Brake are HELD
+    // booleans the physics reads every frame. The helper's D-pad only fires on
+    // press (no release), which can't clear a held flag — so movement uses the
+    // action buttons, whose pointerdown/pointerup give a true physical hold for
+    // the whole press (gas stays on while the thumb is down). Gas is by far the
+    // most-used control, so it's the big PRIMARY button (bottom-right) and also
+    // restarts after a wipe-out. Brake is the single smaller secondary. Pause /
+    // Restart are left OFF the thumb cluster (keyboard P/R + the game-over screen
+    // cover them) so a novice can't hit them by accident reaching for Gas.
     window.gamfControls({
       actions:[
         { label:'Gas',
@@ -501,8 +483,6 @@
         { label:'Brake',
           press:()=>{ input.brake=true; },
           release:()=>{ input.brake=false; } },
-        { label:'Pause', press:()=>{ if(running&&!dead) paused=!paused; } },
-        { label:'Restart', press:()=>{ reset(); } },
       ],
     });
   </script>

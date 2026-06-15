@@ -15,18 +15,6 @@
       touch-action:none; -webkit-user-select:none; user-select:none; }
     html,body{ height:100%; }
     canvas{ display:block; width:100%; height:100%; touch-action:none; }
-    /* on-screen touch steering pads (touch-first) */
-    .pads{ position:fixed; inset:0; z-index:5; pointer-events:none; }
-    .pad{ position:absolute; bottom:calc(env(safe-area-inset-bottom) + 70px);
-      width:80px; height:80px; border-radius:50%; display:grid; place-items:center;
-      pointer-events:auto; color:var(--gx-text);
-      background:color-mix(in srgb, var(--gx-accent) 16%, transparent);
-      border:1px solid color-mix(in srgb, var(--gx-accent) 45%, var(--gx-line));
-      backdrop-filter:blur(6px); transition:transform .1s, background .12s; }
-    .pad:active{ transform:scale(.92); background:color-mix(in srgb, var(--gx-accent) 34%, transparent); }
-    .pad svg{ width:30px; height:30px; }
-    #padL{ left:calc(env(safe-area-inset-left) + 22px); }
-    #padR{ right:calc(env(safe-area-inset-right) + 22px); }
     /* gate flash banner */
     .flash{ position:fixed; left:0; right:0; top:32%; z-index:5; text-align:center;
       pointer-events:none; font-family:var(--gx-font-display); font-weight:400;
@@ -58,12 +46,6 @@
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-restart"/></svg> R restart</span>
   </div>
 
-  <!-- on-screen steering -->
-  <div class="pads">
-    <div class="pad" id="padL"><svg class="gx-ico"><use href="#i-left"/></svg></div>
-    <div class="pad" id="padR"><svg class="gx-ico"><use href="#i-right"/></svg></div>
-  </div>
-
   <div class="flash" id="flash"></div>
 
   <!-- game-over / pause modal -->
@@ -86,7 +68,7 @@
       <p class="gx-help__obj">Carve through every gate before time runs out — pass between the matching pole pairs without missing.</p>
       <ul class="gx-help__list">
         <li><b>Drag / A D / ← →</b><span>Steer left &amp; right</span></li>
-        <li><b>Tap pads</b><span>Steer on touch</span></li>
+        <li><b>Hold ◀ ▶ pad</b><span>Hold to keep carving on touch</span></li>
         <li><b>P</b><span>Pause</span></li>
         <li><b>R</b><span>Restart</span></li>
       </ul>
@@ -335,16 +317,7 @@
       end:()=>{ steer*=0.35; }
     });
 
-    // touch pads
-    function bindPad(id,on){ const el=$(id);
-      const set=(v)=>e=>{ e.preventDefault(); on(v); };
-      el.addEventListener('pointerdown',set(true));
-      el.addEventListener('pointerup',set(false));
-      el.addEventListener('pointercancel',set(false));
-      el.addEventListener('pointerleave',set(false));
-    }
-    bindPad('padL',v=>input.left=v);
-    bindPad('padR',v=>input.right=v);
+    // Touch steering is provided by the shared window.gamfControls D-pad below.
 
     // ---------- discrete actions (shared by keyboard + on-screen buttons) ----------
     function togglePause(){
@@ -402,19 +375,21 @@
     }
 
     // ---------- on-screen controls (shared helper) ----------
-    // Drag still carves (look/aim). Steering is continuous movement, so a held
-    // D-pad nudges the same input.left/right the keyboard uses; discrete actions
-    // (pause / restart) are dedicated buttons — never tap-anywhere.
+    // Slalom is a pure left/right carve, and steering is CONTINUOUS: you hold a
+    // direction to keep turning. So the bottom-left D-pad has only ◀ / ▶ and
+    // hold:true auto-repeats while held — each tick pins `steer` toward full lock
+    // in that direction, so a novice just HOLDS the side they want and the skier
+    // keeps carving (no tapping). `steer` decays toward neutral on its own when the
+    // button is released, so no release callback is needed. Drag still carves too.
+    // There are NO gameplay actions to fire, so the right thumb zone stays empty:
+    // Pause/Restart live on the keyboard and the game-over screen, never next to
+    // the thumb where a novice would hit them by accident while steering.
     window.gamfControls({
       move:{
-        left:()=>{ steer=Math.max(-1,Math.min(1, steer-0.4)); },
-        right:()=>{ steer=Math.max(-1,Math.min(1, steer+0.4)); }
+        left:()=>{ steer=Math.max(-1, steer-0.7); },
+        right:()=>{ steer=Math.min(1, steer+0.7); }
       },
-      hold:true,
-      actions:[
-        { label:'Pause', press:togglePause },
-        { label:'Restart', press:restart }
-      ]
+      hold:true
     });
 
     // ---------- update ----------

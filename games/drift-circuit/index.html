@@ -14,20 +14,6 @@
       touch-action:none; -webkit-user-select:none; user-select:none; }
     html,body{ height:100%; }
     canvas{display:block;width:100%;height:100%;touch-action:none}
-    /* on-screen touch pads */
-    .pads{position:fixed;inset:0;z-index:5;pointer-events:none}
-    .pad{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 60px);width:78px;height:78px;border-radius:50%;
-      display:grid;place-items:center;pointer-events:auto;color:var(--gx-text);
-      background:color-mix(in srgb, var(--gx-accent) 16%, transparent);
-      border:1px solid color-mix(in srgb, var(--gx-accent) 45%, var(--gx-line));
-      backdrop-filter:blur(6px);transition:transform .1s, background .12s}
-    .pad:active{transform:scale(.92);background:color-mix(in srgb, var(--gx-accent) 34%, transparent)}
-    .pad svg{width:30px;height:30px}
-    #padL{left:calc(env(safe-area-inset-left) + 18px)} #padR{left:calc(env(safe-area-inset-left) + 108px)}
-    #padGas{right:calc(env(safe-area-inset-right) + 18px);color:#6f6a3b;
-      background:color-mix(in srgb, #6f6a3b 16%, transparent);
-      border-color:color-mix(in srgb, #6f6a3b 45%, var(--gx-line))}
-    #padGas:active{background:color-mix(in srgb, #6f6a3b 34%, transparent)}
   </style>
 </head>
 <body class="gx">
@@ -41,16 +27,11 @@
     <button class="gx-help__open" id="gxHelpOpen" aria-label="How to play"><svg class="gx-ico"><use href="#i-info"/></svg></button>
   </div>
   <div class="gx-hint">
-    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-touch"/></svg> drag to steer</span>
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-left"/></svg><svg class="gx-ico"><use href="#i-right"/></svg> arrows steer</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-up"/></svg> Up gas</span>
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-keyboard"/></svg> Space boost</span>
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-pause"/></svg> P pause</span>
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-restart"/></svg> R restart</span>
-  </div>
-  <div class="pads">
-    <div class="pad" id="padL"><svg class="gx-ico"><use href="#i-left"/></svg></div>
-    <div class="pad" id="padR"><svg class="gx-ico"><use href="#i-right"/></svg></div>
-    <div class="pad" id="padGas"><svg class="gx-ico"><use href="#i-up"/></svg></div>
   </div>
   <div class="gx-modal" id="over">
     <div class="gx-modal__card">
@@ -66,9 +47,9 @@
       <div class="gx-modal__title">How to Play</div>
       <p class="gx-help__obj">Drift around the circuit and scoop up every coin before the timer runs out.</p>
       <ul class="gx-help__list">
-        <li><b>Drag / Arrows</b> <span>Steer the car</span></li>
-        <li><b>Swipe up / Space</b> <span>Boost</span></li>
-        <li><b>Gas pad / Up</b> <span>Accelerate</span></li>
+        <li><b>◀ ▶ / Arrows</b> <span>Steer the car</span></li>
+        <li><b>Gas / Up</b> <span>Accelerate</span></li>
+        <li><b>Boost / Space</b> <span>Speed burst</span></li>
         <li><b>P</b> <span>Pause</span></li>
         <li><b>R</b> <span>Restart</span></li>
       </ul>
@@ -78,8 +59,6 @@
   <canvas id="c"></canvas>
   <script src="../../gamf-controls.js"></script>
   <script type="module">
-    import { onDrag, onSwipe } from './touch.js';
-
     const SLUG='drift-circuit', BEST_KEY='gamf-racing-'+SLUG+'-best';
     const canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
     let W=0,H=0,DPR=1;
@@ -141,19 +120,7 @@
 
     // ---- input ----
     const input={left:false,right:false,gas:false,boost:false};
-    let steer=0; // -1..1 from drag
-    onDrag(canvas,{ move:({dx})=>{ if(running&&!paused){ steer=Math.max(-1,Math.min(1,steer+dx*0.02)); input.gas=true; } },
-                   end:()=>{ steer*=0.3; setTimeout(()=>{ if(!input.left&&!input.right) input.gas=false; },120); } });
-    onSwipe(canvas,(d)=>{ if(d==='left') flick(-1); else if(d==='right') flick(1);
-      else if(d==='up'){ input.gas=true; input.boost=true; setTimeout(()=>{ input.boost=false; },650); } });
-    function flick(s){ steer=Math.max(-1,Math.min(1,steer+s*0.6)); input.gas=true; }
-
-    // touch pads
-    function bindPad(id,on){ const el=document.getElementById(id);
-      const set=(v)=>e=>{ e.preventDefault(); on(v); };
-      el.addEventListener('pointerdown',set(true)); el.addEventListener('pointerup',set(false));
-      el.addEventListener('pointercancel',set(false)); el.addEventListener('pointerleave',set(false)); }
-    bindPad('padL',v=>input.left=v); bindPad('padR',v=>input.right=v); bindPad('padGas',v=>input.gas=v);
+    const steer=0; // legacy drag steer (unused now; on-screen D-pad drives input.left/right)
 
     const KEYS=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','A','d','D','w','W','s','S',' ','Enter','r','R','p','P']);
     addEventListener('keydown',(e)=>{
@@ -178,27 +145,32 @@
     });
     document.getElementById('again').onclick=reset;
 
-    // ---- on-screen buttons (shared helper) — everything is a button ----
-    // The D-pad helper only fires `press` (no release) and auto-repeats while held
-    // (hold:true). Held steering/gas inputs are booleans, so each press sets the
-    // input true and a short timeout clears it; continuous holding (repeat every
-    // ~120ms) keeps it on, releasing lets it lapse.
-    function holdInput(key){ input[key]=true;
-      clearTimeout(holdInput['_t_'+key]);
-      holdInput['_t_'+key]=setTimeout(()=>{ input[key]=false; },200); }
+    // ---- on-screen buttons (shared helper) ----
+    // Two-thumb layout for a touch novice:
+    //   LEFT thumb  → D-pad ◀ ▶ to steer (hold:true so holding keeps turning).
+    //   RIGHT thumb → big GAS button (the most-used input: hold it to keep moving)
+    //                 + a smaller BOOST for the occasional speed burst.
+    // Steering is a held boolean but the D-pad only re-fires `press` (~110ms) with
+    // no release, so each press sets it true and a 200ms timeout clears it — holding
+    // keeps re-arming it, releasing lets it lapse. Gas/Boost are real press+release
+    // buttons (clean hold). No Brake (releasing Gas already slows you), and Pause /
+    // Reset stay on the keyboard + game-over screen so a novice can't fat-finger them
+    // while reaching for Gas.
+    function holdSteer(key){ input[key]=true;
+      clearTimeout(holdSteer['_t_'+key]);
+      holdSteer['_t_'+key]=setTimeout(()=>{ input[key]=false; },200); }
+    let gasHeld=false; // tracks the Gas button so Boost can share gas safely
     window.gamfControls({
       move:{
-        left:()=>holdInput('left'),
-        right:()=>holdInput('right'),
-        up:()=>holdInput('gas'),
+        left:()=>holdSteer('left'),
+        right:()=>holdSteer('right'),
       },
       hold:true,
       actions:[
-        { label:'Boost', press:()=>{ if(!running){ reset(); } else { input.gas=true; input.boost=true; } },
-                         release:()=>{ input.boost=false; } },
-        { label:'Brake', press:()=>{ input.gas=false; } },
-        { label:'Pause', press:()=>{ if(running) paused=!paused; } },
-        { label:'Reset', press:reset },
+        { label:'Gas',   press:()=>{ if(!running){ reset(); } else { gasHeld=true; input.gas=true; } },
+                         release:()=>{ gasHeld=false; input.gas=false; } },
+        { label:'Boost', press:()=>{ if(running){ input.gas=true; input.boost=true; } },
+                         release:()=>{ input.boost=false; if(!gasHeld) input.gas=false; } },
       ]
     });
 

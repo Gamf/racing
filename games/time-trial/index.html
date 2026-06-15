@@ -39,9 +39,9 @@
 
   <!-- controls hint -->
   <div class="gx-hint">
-    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-touch"/></svg> drag to steer</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-left"/></svg><svg class="gx-ico"><use href="#i-right"/></svg> D-pad / drag steer</span>
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-left"/></svg><svg class="gx-ico"><use href="#i-right"/></svg> A / D steer</span>
-    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-keyboard"/></svg> Space boost</span>
+    <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-keyboard"/></svg> Boost button / Space</span>
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-pause"/></svg> P pause</span>
     <span class="gx-hint__chip"><svg class="gx-ico"><use href="#i-restart"/></svg> R restart</span>
   </div>
@@ -67,8 +67,8 @@
       <div class="gx-modal__title">How to Play</div>
       <p class="gx-help__obj">Hit every glowing checkpoint in order and complete laps before the clock runs out — each gate adds time.</p>
       <ul class="gx-help__list">
-        <li><b>Drag / A · D</b><span>Steer</span></li>
-        <li><b>Arrows</b><span>Steer</span></li>
+        <li><b>D-pad / drag</b><span>Steer</span></li>
+        <li><b>Arrows / A · D</b><span>Steer</span></li>
         <li><b>Boost button / Space</b><span>Boost</span></li>
         <li><b>Pause button / P</b><span>Pause</span></li>
         <li><b>Restart button / R</b><span>Restart</span></li>
@@ -262,6 +262,12 @@
     const car={x:0,z:0,a:0,speed:0};
     let steer=0;        // -1..1 steering input from drag
     const input={left:false,right:false,boost:false};
+    // On-screen D-pad has no key-up; the helper auto-repeats press while held, so we
+    // record when it last fired and treat the direction as active for a short window.
+    // Anything older than this means the thumb has lifted -> steering stops.
+    const PAD_HOLD_MS=180;
+    const padHeld={left:0,right:0};
+    const now=()=> (typeof performance!=='undefined'? performance.now() : Date.now());
 
     // game state
     let cpGot, nextCp, laps, timeLeft, running, paused, score, boostT;
@@ -279,7 +285,7 @@
     function reset(){
       seed=20260613;
       placeCarAtStart();
-      steer=0; input.left=input.right=input.boost=false; boostT=0;
+      steer=0; input.left=input.right=input.boost=false; padHeld.left=padHeld.right=0; boostT=0;
       cps.forEach(c=>{ c.got=false; c.grp.visible=true; });
       cpGot=0; nextCp=0; laps=0; timeLeft=45; running=true; score=0;
       // stay paused if the how-to-play overlay is currently open
@@ -347,13 +353,19 @@
     });
     $('again').onclick=reset;
 
-    // ---------- on-screen action buttons (shared helper) ----------
-    // Drag steers/aims; all discrete actions are dedicated buttons (no tap-anywhere).
+    // ---------- on-screen thumb-zone controls (shared helper) ----------
+    // Left-right racer: D-pad steers (hold to keep turning, like A/D), Boost is the
+    // big primary action (held to go faster). Drag still steers as a bonus.
+    // Pause/Restart stay on the keyboard (P/R) + the game-over screen so a novice
+    // can't wipe their run reaching for Boost.
     window.gamfControls({
+      move:{
+        left:()=>{ padHeld.left=now(); },
+        right:()=>{ padHeld.right=now(); },
+      },
+      hold:true,
       actions:[
-        { label:'Restart', press:restart },
-        { label:'Pause',   press:togglePause },
-        { label:'Boost',   press:()=>setBoost(true), release:()=>setBoost(false) },
+        { label:'Boost', press:()=>setBoost(true), release:()=>setBoost(false), hold:true },
       ]
     });
 
@@ -406,8 +418,11 @@
     // ---------- update ----------
     function update(dt){
       const d60=dt*60;
-      // steering: combine drag + held keys/pads
-      const keyTurn=(input.left?-1:0)+(input.right?1:0);
+      // steering: combine drag + held keys/pads (D-pad held = recent auto-repeat)
+      const tNow=now();
+      const padLeft = (tNow - padHeld.left) < PAD_HOLD_MS;
+      const padRight = (tNow - padHeld.right) < PAD_HOLD_MS;
+      const keyTurn=((input.left||padLeft)?-1:0)+((input.right||padRight)?1:0);
       const turn=Math.max(-1,Math.min(1, steer + keyTurn));
       // auto-accelerate; boost increases top speed
       const boosting = input.boost || boostT>0;

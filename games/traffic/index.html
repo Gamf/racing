@@ -380,18 +380,19 @@
     $('again').onclick=reset;
 
     /* ---------- shared on-screen controls ----------
-       Drag still steers across the road (look/aim). Discrete actions are buttons:
-       left/right lane step (same fn as keyboard A/D + arrows), pause, restart. */
+       Left/right-only game: steering IS the whole game, so the bottom-left D-pad
+       has just ◀ ▶ and nothing else. hold:true so a novice can simply HOLD a
+       direction and the car keeps walking across the lanes (auto-repeat). No
+       action cluster — there's no fire/jump here; Pause is on the keyboard (P)
+       and the help overlay, Restart is on the keyboard (R) and the crash screen,
+       so neither clutters the thumb zone where a reach could trigger them by
+       accident. Drag-steer across the road still works for those who find it. */
     window.gamfControls({
       move:{
         left:()=>{ if(alive&&!paused) stepLane(-1); },
         right:()=>{ if(alive&&!paused) stepLane(1); }
       },
-      hold:false,           // each tap is one discrete lane step
-      actions:[
-        { label:'Pause', press:()=>togglePause() },
-        { label:'Restart', press:()=>reset() }
-      ]
+      hold:true             // hold a direction to keep moving across lanes
     });
 
     /* ---------- how-to-play overlay ---------- */
